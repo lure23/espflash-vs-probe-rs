@@ -51,7 +51,10 @@ pub type uint16_t = u16;
 pub type uint32_t = u32;
 #[derive(Copy, Clone)]
 #[repr(C)]
-pub struct VL53L5CX_Platform {}
+pub struct VL53L5CX_Platform {
+    pub foo: u32,
+}
+
 #[derive(Copy, Clone)]
 #[repr(C)]
 pub struct VL53L5CX_Configuration {
@@ -173,11 +176,12 @@ unsafe extern "C" fn _vl53l5cx_poll_for_mcu_boot(
             }
             if !((timeout as i32) < 500 as i32 as uint16_t as i32) {
                 log::info!("timeout in poll for mcu boot");
-                timeout = 0; continue;
                 break;
             }
         }
     }
+log::info!("poll for mcu boot {}", status);
+
     return status;
 }
 unsafe extern "C" fn _vl53l5cx_send_offset_data(

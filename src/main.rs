@@ -3,12 +3,14 @@
 
 mod vl53l5;
 
-use core::cell::RefCell;
+use core::{cell::RefCell, mem::MaybeUninit};
 
 use critical_section::Mutex;
 use esp_backtrace as _;
 use esp_hal::{delay::Delay, entry, prelude::_fugit_RateExtU32};
 use esp_println::println;
+
+use embedded_hal::{i2c::I2c, spi::SpiDevice};
 
 static I2C: Mutex<
     RefCell<Option<esp_hal::i2c::I2C<'static, esp_hal::peripherals::I2C0, esp_hal::Blocking>>>,
@@ -41,7 +43,7 @@ fn main() -> ! {
 
     unsafe {
         let mut p_dev = vl53l5::VL53L5CX_Configuration {
-            platform: vl53l5::VL53L5CX_Platform {},
+            platform: vl53l5::VL53L5CX_Platform { foo: 0},
             streamcount: 0,
             data_read_size: 0,
             default_configuration: core::ptr::null_mut(),
@@ -60,6 +62,9 @@ fn main() -> ! {
         println!("init {}", status);
 
         println!("init done");
+
+        let status = vl53l5::vl53l5cx_is_alive(&mut p_dev as *mut _, &mut alive as *mut _);
+        println!("alive = {} {}", status, alive);
 
         let status = vl53l5::vl53l5cx_start_ranging(&mut p_dev as *mut _);
         println!("start ranging {}", status);
@@ -87,7 +92,7 @@ fn main() -> ! {
             },
         };
 
-        while (_loop < 10) {
+        while _loop < 10 {
             /* Use polling function to know when a new measurement is ready.
              * Another way can be to wait for HW interrupt raised on PIN A3
              * (GPIO 1) when a new measurement is ready */
@@ -97,7 +102,7 @@ fn main() -> ! {
 
             const VL53L5CX_NB_TARGET_PER_ZONE: usize = 1;
 
-            if (isReady != 0) {
+            if isReady != 0 {
                 vl53l5::vl53l5cx_get_ranging_data(&mut p_dev as *mut _, &mut Results as *mut _);
 
                 /* As the sensor is set in 4x4 mode by default, we have a total
@@ -129,6 +134,7 @@ fn main() -> ! {
 }
 
 const ADDRESS: u8 = 0x29;
+const I2C_MAX_LEN: usize = 32;
 
 #[no_mangle]
 extern "C" fn RdByte(
@@ -139,17 +145,13 @@ extern "C" fn RdByte(
     critical_section::with(|cs| {
         let reg = RegisterAdress.to_be_bytes();
 
+        let mut i2c = I2C.borrow_ref_mut(cs);
+        let i2c = i2c.as_mut().unwrap();
 
         let mut buffer = [0u8; 1];
-        I2C.borrow_ref_mut(cs)
-            .as_mut()
-            .unwrap()
-            .write_read(
-                ADDRESS,
-                &[reg[0], reg[1]],
-                &mut buffer,
-            )
-            .unwrap();
+        i2c.write(ADDRESS, &[reg[0], reg[1]]).unwrap();
+        i2c.read(ADDRESS, &mut buffer).unwrap();
+
         WaitMs(p_platform, 1);
 
         unsafe {
@@ -169,17 +171,12 @@ extern "C" fn WrByte(
     critical_section::with(|cs| {
         let reg = RegisterAdress.to_be_bytes();
 
+        let mut i2c = I2C.borrow_ref_mut(cs);
+        let i2c = i2c.as_mut().unwrap();
 
-        let buffer = [
-            reg[0],
-            reg[1],
-            value,
-        ];
-        I2C.borrow_ref_mut(cs)
-            .as_mut()
-            .unwrap()
-            .write(ADDRESS, &buffer)
-            .unwrap();
+        let buffer = [reg[0], reg[1], value];
+
+        i2c.write(ADDRESS, &buffer).unwrap();
         WaitMs(p_platform, 1);
 
         log::info!("wrote reg {} -> {}", RegisterAdress, value);
@@ -198,18 +195,12 @@ extern "C" fn RdMulti(
         let reg = RegisterAdress.to_be_bytes();
 
         let mut i2c = I2C.borrow_ref_mut(cs);
-        let mut i2c = i2c.as_mut().unwrap();
+        let i2c = i2c.as_mut().unwrap();
 
         let data = unsafe { core::slice::from_raw_parts_mut(p_values, size as usize) };
-        for chunk in data.chunks_mut(252) {
-            i2c.write_read(
-                ADDRESS,
-                &[reg[0], reg[1]],
-                chunk,
-            )
-            .unwrap();
-              WaitMs(p_platform, 1);
-
+        for chunk in data.chunks_mut(I2C_MAX_LEN - 2) {
+            i2c.write_read(ADDRESS, &[reg[0], reg[1]], chunk).unwrap();
+            WaitMs(p_platform, 1);
         }
 
         log::info!("done rd_mult {} -> {:02x?}", RegisterAdress, data);
@@ -225,24 +216,32 @@ extern "C" fn WrMulti(
     size: u32,
 ) -> u8 {
     critical_section::with(|cs| {
-
         let reg = RegisterAdress.to_be_bytes();
         log::info!("wr multi {}, size = {}", RegisterAdress, size);
 
         let mut i2c = I2C.borrow_ref_mut(cs);
-        let mut i2c = i2c.as_mut().unwrap();
+        let i2c = i2c.as_mut().unwrap();
 
         let data = unsafe { core::slice::from_raw_parts_mut(p_values, size as usize) };
+            let mut operations = MaybeUninit::<[embedded_hal::i2c::Operation; 1025]>::zeroed();
+            
+            let mut operations = unsafe {
+                let mut operations = operations.assume_init_mut();
 
-        for chunk in data.chunks(252) {
-            let mut tmp = [0u8; 254];
-            tmp[0] = reg[0];
-            tmp[1] = reg[1];
-            tmp[2..][..chunk.len()].copy_from_slice(chunk);
+                operations[0] = embedded_hal::i2c::Operation::Write(&reg);
 
-            i2c.write(ADDRESS, &tmp).unwrap();
-            WaitMs(p_platform, 1);
-        }
+                let mut idx = 1;
+                for chunk in data.chunks(32) {
+                    operations[idx] = embedded_hal::i2c::Operation::Write(chunk);
+                    idx += 1;
+                }
+
+                &mut operations[..idx]
+            };
+
+
+            i2c.transaction(ADDRESS, operations).unwrap();
+
     });
 
     0
@@ -268,7 +267,7 @@ pub extern "C" fn SwapBuffer(buf: *mut u8, size: u16 /*size in bytes; not words*
     let s: &mut [u32] = unsafe { core::slice::from_raw_parts_mut(buf as *mut u32, words) };
 
     for i in 0..words {
-        s[i] = u32::swap_bytes(s[i])
+        s[i] = u32::swap_bytes(s[i]);
     }
 }
 
@@ -279,7 +278,7 @@ extern "C" fn WaitMs(p_platform: *mut vl53l5::VL53L5CX_Platform, TimeMs: u32) ->
             .borrow_ref_mut(cs)
             .as_mut()
             .unwrap()
-            .delay_millis(TimeMs );
+            .delay_millis(TimeMs);
     });
     0
 }
