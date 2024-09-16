@@ -10,7 +10,7 @@ use esp_backtrace as _;
 use esp_hal::{delay::Delay, entry, prelude::_fugit_RateExtU32};
 use esp_println::println;
 
-use embedded_hal::{i2c::I2c, spi::SpiDevice};
+use embedded_hal::i2c::I2c;
 
 static I2C: Mutex<
     RefCell<Option<esp_hal::i2c::I2C<'static, esp_hal::peripherals::I2C0, esp_hal::Blocking>>>,
@@ -25,15 +25,15 @@ fn main() -> ! {
 
     println!("Hello, world!");
 
-    let mut delay = Delay::new();
+    let delay = Delay::new();
 
     let io = esp_hal::gpio::Io::new(peripherals.GPIO, peripherals.IO_MUX);
 
-    let mut i2c = esp_hal::i2c::I2C::new(
+    let i2c = esp_hal::i2c::I2C::new(
         peripherals.I2C0,
         io.pins.gpio1, // SDA
         io.pins.gpio2, // SCL
-        100u32.kHz(),
+        1000u32.kHz(),
     );
 
     critical_section::with(|cs| {
@@ -43,7 +43,7 @@ fn main() -> ! {
 
     unsafe {
         let mut p_dev = vl53l5::VL53L5CX_Configuration {
-            platform: vl53l5::VL53L5CX_Platform { foo: 0},
+            platform: vl53l5::VL53L5CX_Platform { foo: 0 },
             streamcount: 0,
             data_read_size: 0,
             default_configuration: core::ptr::null_mut(),
@@ -118,7 +118,7 @@ fn main() -> ! {
                     );
                 }
                 println!("\n");
-                _loop += 1;
+                // _loop += 1;
             }
 
             /* Wait a few ms to avoid too high polling (function in platform
@@ -157,7 +157,7 @@ extern "C" fn RdByte(
         unsafe {
             *p_value = buffer[0];
         }
-        log::info!("read reg {} -> {}", RegisterAdress, buffer[0]);
+        //     log::info!("read reg {} -> {}", RegisterAdress, buffer[0]);
         0
     })
 }
@@ -179,7 +179,7 @@ extern "C" fn WrByte(
         i2c.write(ADDRESS, &buffer).unwrap();
         WaitMs(p_platform, 1);
 
-        log::info!("wrote reg {} -> {}", RegisterAdress, value);
+        //     log::info!("wrote reg {} -> {}", RegisterAdress, value);
         0
     })
 }
@@ -198,12 +198,25 @@ extern "C" fn RdMulti(
         let i2c = i2c.as_mut().unwrap();
 
         let data = unsafe { core::slice::from_raw_parts_mut(p_values, size as usize) };
-        for chunk in data.chunks_mut(I2C_MAX_LEN - 2) {
-            i2c.write_read(ADDRESS, &[reg[0], reg[1]], chunk).unwrap();
-            WaitMs(p_platform, 1);
-        }
+        let mut operations = MaybeUninit::<[embedded_hal::i2c::Operation; 1025]>::zeroed();
 
-        log::info!("done rd_mult {} -> {:02x?}", RegisterAdress, data);
+        let operations = unsafe {
+            let operations = operations.assume_init_mut();
+
+            operations[0] = embedded_hal::i2c::Operation::Write(&reg);
+
+            let mut idx = 1;
+            for chunk in data.chunks_mut(32) {
+                operations[idx] = embedded_hal::i2c::Operation::Read(chunk);
+                idx += 1;
+            }
+
+            &mut operations[..idx]
+        };
+
+        i2c.transaction(ADDRESS, operations).unwrap();
+
+        //   log::info!("done rd_mult {} -> {:02x?}", RegisterAdress, data);
     });
     0
 }
@@ -217,31 +230,29 @@ extern "C" fn WrMulti(
 ) -> u8 {
     critical_section::with(|cs| {
         let reg = RegisterAdress.to_be_bytes();
-        log::info!("wr multi {}, size = {}", RegisterAdress, size);
+        //   log::info!("wr multi {}, size = {}", RegisterAdress, size);
 
         let mut i2c = I2C.borrow_ref_mut(cs);
         let i2c = i2c.as_mut().unwrap();
 
         let data = unsafe { core::slice::from_raw_parts_mut(p_values, size as usize) };
-            let mut operations = MaybeUninit::<[embedded_hal::i2c::Operation; 1025]>::zeroed();
-            
-            let mut operations = unsafe {
-                let mut operations = operations.assume_init_mut();
+        let mut operations = MaybeUninit::<[embedded_hal::i2c::Operation; 1025]>::zeroed();
 
-                operations[0] = embedded_hal::i2c::Operation::Write(&reg);
+        let operations = unsafe {
+            let operations = operations.assume_init_mut();
 
-                let mut idx = 1;
-                for chunk in data.chunks(32) {
-                    operations[idx] = embedded_hal::i2c::Operation::Write(chunk);
-                    idx += 1;
-                }
+            operations[0] = embedded_hal::i2c::Operation::Write(&reg);
 
-                &mut operations[..idx]
-            };
+            let mut idx = 1;
+            for chunk in data.chunks(32) {
+                operations[idx] = embedded_hal::i2c::Operation::Write(chunk);
+                idx += 1;
+            }
 
+            &mut operations[..idx]
+        };
 
-            i2c.transaction(ADDRESS, operations).unwrap();
-
+        i2c.transaction(ADDRESS, operations).unwrap();
     });
 
     0

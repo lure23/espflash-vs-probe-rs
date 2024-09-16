@@ -180,7 +180,7 @@ unsafe extern "C" fn _vl53l5cx_poll_for_mcu_boot(
             }
         }
     }
-log::info!("poll for mcu boot {}", status);
+    log::info!("poll for mcu boot {}", status);
 
     return status;
 }
