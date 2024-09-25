@@ -1,3 +1,4 @@
+#![no_std]
 #![allow(
     dead_code,
     mutable_transmutes,
@@ -7,8 +8,6 @@
     unused_assignments,
     unused_mut
 )]
-//#![register_tool(c2rust)]
-//#![feature(register_tool)]
 
 use c2rust_bitfields::BitfieldStruct;
 
@@ -175,13 +174,10 @@ unsafe extern "C" fn _vl53l5cx_poll_for_mcu_boot(
                 break;
             }
             if !((timeout as i32) < 500 as i32 as uint16_t as i32) {
-                log::info!("timeout in poll for mcu boot");
                 break;
             }
         }
     }
-    log::info!("poll for mcu boot {}", status);
-
     return status;
 }
 unsafe extern "C" fn _vl53l5cx_send_offset_data(

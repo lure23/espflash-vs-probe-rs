@@ -1,8 +1,6 @@
 #![no_std]
 #![no_main]
 
-mod vl53l5;
-
 use core::{cell::RefCell, mem::MaybeUninit};
 
 use critical_section::Mutex;
@@ -22,8 +20,6 @@ fn main() -> ! {
     esp_println::logger::init_logger_from_env();
 
     let peripherals = esp_hal::init(esp_hal::Config::default());
-
-    println!("Hello, world!");
 
     let delay = Delay::new();
 
@@ -97,7 +93,7 @@ fn main() -> ! {
              * Another way can be to wait for HW interrupt raised on PIN A3
              * (GPIO 1) when a new measurement is ready */
 
-            let status =
+            let _status =
                 vl53l5::vl53l5cx_check_data_ready(&mut p_dev as *mut _, &mut isReady as *mut _);
 
             const VL53L5CX_NB_TARGET_PER_ZONE: usize = 1;
@@ -126,7 +122,7 @@ fn main() -> ! {
             WaitMs(&mut p_dev.platform as *mut _, 5);
         }
 
-        let status = vl53l5::vl53l5cx_stop_ranging(&mut p_dev as *mut _);
+        let _status = vl53l5::vl53l5cx_stop_ranging(&mut p_dev as *mut _);
         println!("End of ULD demo");
     }
 
@@ -139,11 +135,11 @@ const I2C_MAX_LEN: usize = 32;
 #[no_mangle]
 extern "C" fn RdByte(
     p_platform: *mut vl53l5::VL53L5CX_Platform,
-    RegisterAdress: u16,
+    register_adress: u16,
     p_value: *mut u8,
 ) -> u8 {
     critical_section::with(|cs| {
-        let reg = RegisterAdress.to_be_bytes();
+        let reg = register_adress.to_be_bytes();
 
         let mut i2c = I2C.borrow_ref_mut(cs);
         let i2c = i2c.as_mut().unwrap();
@@ -157,7 +153,6 @@ extern "C" fn RdByte(
         unsafe {
             *p_value = buffer[0];
         }
-        //     log::info!("read reg {} -> {}", RegisterAdress, buffer[0]);
         0
     })
 }
@@ -165,11 +160,11 @@ extern "C" fn RdByte(
 #[no_mangle]
 extern "C" fn WrByte(
     p_platform: *mut vl53l5::VL53L5CX_Platform,
-    RegisterAdress: u16,
+    register_adress: u16,
     value: u8,
 ) -> u8 {
     critical_section::with(|cs| {
-        let reg = RegisterAdress.to_be_bytes();
+        let reg = register_adress.to_be_bytes();
 
         let mut i2c = I2C.borrow_ref_mut(cs);
         let i2c = i2c.as_mut().unwrap();
@@ -186,13 +181,13 @@ extern "C" fn WrByte(
 
 #[no_mangle]
 extern "C" fn RdMulti(
-    p_platform: *mut vl53l5::VL53L5CX_Platform,
-    RegisterAdress: u16,
+    _p_platform: *mut vl53l5::VL53L5CX_Platform,
+    register_adress: u16,
     p_values: *mut u8,
     size: u32,
 ) -> u8 {
     critical_section::with(|cs| {
-        let reg = RegisterAdress.to_be_bytes();
+        let reg = register_adress.to_be_bytes();
 
         let mut i2c = I2C.borrow_ref_mut(cs);
         let i2c = i2c.as_mut().unwrap();
@@ -206,7 +201,7 @@ extern "C" fn RdMulti(
             operations[0] = embedded_hal::i2c::Operation::Write(&reg);
 
             let mut idx = 1;
-            for chunk in data.chunks_mut(32) {
+            for chunk in data.chunks_mut(I2C_MAX_LEN) {
                 operations[idx] = embedded_hal::i2c::Operation::Read(chunk);
                 idx += 1;
             }
@@ -215,22 +210,19 @@ extern "C" fn RdMulti(
         };
 
         i2c.transaction(ADDRESS, operations).unwrap();
-
-        //   log::info!("done rd_mult {} -> {:02x?}", RegisterAdress, data);
     });
     0
 }
 
 #[no_mangle]
 extern "C" fn WrMulti(
-    p_platform: *mut vl53l5::VL53L5CX_Platform,
-    RegisterAdress: u16,
+    _p_platform: *mut vl53l5::VL53L5CX_Platform,
+    register_adress: u16,
     p_values: *mut u8,
     size: u32,
 ) -> u8 {
     critical_section::with(|cs| {
-        let reg = RegisterAdress.to_be_bytes();
-        //   log::info!("wr multi {}, size = {}", RegisterAdress, size);
+        let reg = register_adress.to_be_bytes();
 
         let mut i2c = I2C.borrow_ref_mut(cs);
         let i2c = i2c.as_mut().unwrap();
@@ -244,7 +236,7 @@ extern "C" fn WrMulti(
             operations[0] = embedded_hal::i2c::Operation::Write(&reg);
 
             let mut idx = 1;
-            for chunk in data.chunks(32) {
+            for chunk in data.chunks(I2C_MAX_LEN) {
                 operations[idx] = embedded_hal::i2c::Operation::Write(chunk);
                 idx += 1;
             }
@@ -283,13 +275,13 @@ pub extern "C" fn SwapBuffer(buf: *mut u8, size: u16 /*size in bytes; not words*
 }
 
 #[no_mangle]
-extern "C" fn WaitMs(p_platform: *mut vl53l5::VL53L5CX_Platform, TimeMs: u32) -> u8 {
+extern "C" fn WaitMs(_p_platform: *mut vl53l5::VL53L5CX_Platform, time_ms: u32) -> u8 {
     critical_section::with(|cs| {
         DELAY
             .borrow_ref_mut(cs)
             .as_mut()
             .unwrap()
-            .delay_millis(TimeMs);
+            .delay_millis(time_ms);
     });
     0
 }
