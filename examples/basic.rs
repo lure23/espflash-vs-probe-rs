@@ -188,24 +188,8 @@ extern "C" fn RdMulti(
         let mut i2c = I2C.borrow_ref_mut(cs);
         let i2c = i2c.as_mut().unwrap();
 
-        let data = unsafe { core::slice::from_raw_parts_mut(p_values, size as usize) };
-        let mut operations = MaybeUninit::<[esp_hal::i2c::master::Operation; 1025]>::zeroed();
-
-        let operations = unsafe {
-            let operations = operations.assume_init_mut();
-
-            operations[0] = esp_hal::i2c::master::Operation::Write(&reg);
-
-            let mut idx = 1;
-            for chunk in data.chunks_mut(I2C_MAX_LEN) {
-                operations[idx] = esp_hal::i2c::master::Operation::Read(chunk);
-                idx += 1;
-            }
-
-            &mut operations[..idx]
-        };
-
-        i2c.transaction(ADDRESS, operations).unwrap();
+        let rdata = unsafe { core::slice::from_raw_parts_mut(p_values, size as usize) };
+        i2c.write_read(ADDRESS, &reg, rdata).unwrap();
     });
     0
 }
@@ -224,23 +208,11 @@ extern "C" fn WrMulti(
         let i2c = i2c.as_mut().unwrap();
 
         let data = unsafe { core::slice::from_raw_parts_mut(p_values, size as usize) };
-        let mut operations = MaybeUninit::<[esp_hal::i2c::master::Operation; 1025]>::zeroed();
 
-        let operations = unsafe {
-            let operations = operations.assume_init_mut();
-
-            operations[0] = esp_hal::i2c::master::Operation::Write(&reg);
-
-            let mut idx = 1;
-            for chunk in data.chunks(I2C_MAX_LEN) {
-                operations[idx] = esp_hal::i2c::master::Operation::Write(chunk);
-                idx += 1;
-            }
-
-            &mut operations[..idx]
-        };
-
-        i2c.transaction(ADDRESS, operations).unwrap();
+        let mut wdata = [0u8; 32770];
+        wdata[0..][..2].copy_from_slice(&reg);
+        wdata[2..][..data.len()].copy_from_slice(data);
+        i2c.write(ADDRESS, &wdata[..(2 + data.len())]).unwrap();
     });
 
     0
