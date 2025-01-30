@@ -5,17 +5,14 @@ use core::{cell::RefCell, mem::MaybeUninit};
 
 use critical_section::Mutex;
 use esp_backtrace as _;
-use esp_hal::{delay::Delay, entry, prelude::_fugit_RateExtU32};
+use esp_hal::{delay::Delay, main, time::RateExtU32};
 use esp_println::println;
 
-use embedded_hal::i2c::I2c;
-
-static I2C: Mutex<
-    RefCell<Option<esp_hal::i2c::I2C<'static, esp_hal::peripherals::I2C0, esp_hal::Blocking>>>,
-> = Mutex::new(RefCell::new(None));
+static I2C: Mutex<RefCell<Option<esp_hal::i2c::master::I2c<esp_hal::Blocking>>>> =
+    Mutex::new(RefCell::new(None));
 static DELAY: Mutex<RefCell<Option<esp_hal::delay::Delay>>> = Mutex::new(RefCell::new(None));
 
-#[entry]
+#[main]
 fn main() -> ! {
     esp_println::logger::init_logger_from_env();
 
@@ -23,14 +20,13 @@ fn main() -> ! {
 
     let delay = Delay::new();
 
-    let io = esp_hal::gpio::Io::new(peripherals.GPIO, peripherals.IO_MUX);
-
-    let i2c = esp_hal::i2c::I2C::new(
+    let i2c = esp_hal::i2c::master::I2c::new(
         peripherals.I2C0,
-        io.pins.gpio1, // SDA
-        io.pins.gpio2, // SCL
-        1000u32.kHz(),
-    );
+        esp_hal::i2c::master::Config::default().with_frequency(1000u32.kHz()),
+    )
+    .unwrap()
+    .with_sda(peripherals.GPIO1)
+    .with_scl(peripherals.GPIO2);
 
     critical_section::with(|cs| {
         I2C.borrow_ref_mut(cs).replace(i2c);
@@ -193,16 +189,16 @@ extern "C" fn RdMulti(
         let i2c = i2c.as_mut().unwrap();
 
         let data = unsafe { core::slice::from_raw_parts_mut(p_values, size as usize) };
-        let mut operations = MaybeUninit::<[embedded_hal::i2c::Operation; 1025]>::zeroed();
+        let mut operations = MaybeUninit::<[esp_hal::i2c::master::Operation; 1025]>::zeroed();
 
         let operations = unsafe {
             let operations = operations.assume_init_mut();
 
-            operations[0] = embedded_hal::i2c::Operation::Write(&reg);
+            operations[0] = esp_hal::i2c::master::Operation::Write(&reg);
 
             let mut idx = 1;
             for chunk in data.chunks_mut(I2C_MAX_LEN) {
-                operations[idx] = embedded_hal::i2c::Operation::Read(chunk);
+                operations[idx] = esp_hal::i2c::master::Operation::Read(chunk);
                 idx += 1;
             }
 
@@ -228,16 +224,16 @@ extern "C" fn WrMulti(
         let i2c = i2c.as_mut().unwrap();
 
         let data = unsafe { core::slice::from_raw_parts_mut(p_values, size as usize) };
-        let mut operations = MaybeUninit::<[embedded_hal::i2c::Operation; 1025]>::zeroed();
+        let mut operations = MaybeUninit::<[esp_hal::i2c::master::Operation; 1025]>::zeroed();
 
         let operations = unsafe {
             let operations = operations.assume_init_mut();
 
-            operations[0] = embedded_hal::i2c::Operation::Write(&reg);
+            operations[0] = esp_hal::i2c::master::Operation::Write(&reg);
 
             let mut idx = 1;
             for chunk in data.chunks(I2C_MAX_LEN) {
-                operations[idx] = embedded_hal::i2c::Operation::Write(chunk);
+                operations[idx] = esp_hal::i2c::master::Operation::Write(chunk);
                 idx += 1;
             }
 
