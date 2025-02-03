@@ -1,7 +1,7 @@
 #![no_std]
 #![no_main]
 
-use core::{cell::RefCell, mem::MaybeUninit};
+use core::cell::RefCell;
 
 use critical_section::Mutex;
 use esp_backtrace as _;
@@ -22,7 +22,8 @@ fn main() -> ! {
 
     let i2c = esp_hal::i2c::master::I2c::new(
         peripherals.I2C0,
-        esp_hal::i2c::master::Config::default().with_frequency(1000u32.kHz()),
+        esp_hal::i2c::master::Config::default()
+            //.with_frequency(1000u32.kHz()),
     )
     .unwrap()
     .with_sda(peripherals.GPIO1)
@@ -126,7 +127,7 @@ fn main() -> ! {
 }
 
 const ADDRESS: u8 = 0x29;
-const I2C_MAX_LEN: usize = 32;
+//R const I2C_MAX_LEN: usize = 32;
 
 #[no_mangle]
 extern "C" fn RdByte(
