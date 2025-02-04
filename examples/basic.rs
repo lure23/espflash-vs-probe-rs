@@ -6,14 +6,22 @@ use core::cell::RefCell;
 use critical_section::Mutex;
 use esp_backtrace as _;
 use esp_hal::{delay::Delay, main, time::RateExtU32};
+
+#[cfg(feature = "esp-println")]
 use esp_println::println;
+#[cfg(feature = "defmt")]
+use {
+    defmt::{info as println, assert},
+    defmt_rtt as _
+};
 
 static I2C: Mutex<RefCell<Option<esp_hal::i2c::master::I2c<esp_hal::Blocking>>>> =
     Mutex::new(RefCell::new(None));
-static DELAY: Mutex<RefCell<Option<esp_hal::delay::Delay>>> = Mutex::new(RefCell::new(None));
+static DELAY: Mutex<RefCell<Option<Delay>>> = Mutex::new(RefCell::new(None));
 
 #[main]
 fn main() -> ! {
+    #[cfg(feature="esp-println")]
     esp_println::logger::init_logger_from_env();
 
     let peripherals = esp_hal::init(esp_hal::Config::default());
@@ -23,7 +31,7 @@ fn main() -> ! {
     let i2c = esp_hal::i2c::master::I2c::new(
         peripherals.I2C0,
         esp_hal::i2c::master::Config::default()
-            //.with_frequency(1000u32.kHz()),
+            .with_frequency(1000.kHz()),     // Note: ESP32-C{36} only run up to 400 kHz (right?)
     )
     .unwrap()
     .with_sda(peripherals.GPIO1)
@@ -127,7 +135,6 @@ fn main() -> ! {
 }
 
 const ADDRESS: u8 = 0x29;
-//R const I2C_MAX_LEN: usize = 32;
 
 #[no_mangle]
 extern "C" fn RdByte(

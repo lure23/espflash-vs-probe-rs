@@ -1,0 +1,40 @@
+$ cargo build --release --no-default-features --features=defmt --example basic && probe-rs run /home/ubuntu/target/riscv32imc-unknown-none-elf/release/examples/basic
+   Compiling defmt-macros v0.4.0
+   Compiling vl53l5 v0.1.0 (/home/ubuntu/vl53l5-c2rust.fork)
+   Compiling defmt v0.3.10
+   Compiling embedded-hal v1.0.0
+   Compiling embedded-io v0.6.1
+   Compiling embedded-io-async v0.6.1
+   Compiling embassy-futures v0.1.1
+   Compiling embedded-hal-async v1.0.0
+   Compiling embassy-sync v0.6.2
+   Compiling embassy-time v0.4.0
+   Compiling riscv v0.12.1
+   Compiling defmt-rtt v0.4.1
+   Compiling fugit v0.3.7
+   Compiling esp-riscv-rt v0.9.1 (https://github.com/esp-rs/esp-hal.git#fe530619)
+   Compiling embassy-embedded-hal v0.3.0
+   Compiling esp32c3 v0.27.0
+   Compiling esp-backtrace v0.15.0 (https://github.com/esp-rs/esp-hal.git#fe530619)
+   Compiling esp-hal v0.23.1 (https://github.com/esp-rs/esp-hal.git#fe530619)
+    Finished `release` profile [optimized + debuginfo] target(s) in 15.85s
+basic                                                                                                                                                       100% 5384KB   4.1MB/s   00:01    
+      Erasing ✔ 100% [####################] 256.00 KiB @ 251.78 KiB/s (took 1s)
+  Programming ✔ 100% [####################] 106.65 KiB @  27.73 KiB/s (took 4s)                                                                                                                    Finished in 4.99s
+ERROR ====================== PANIC ======================
+└─ esp_backtrace::panic_handler @ /home/ubuntu/.cargo/git/checkouts/esp-hal-42ec44e8c6943228/fe53061/esp-backtrace/src/lib.rs:25  
+ERROR panicked at examples/basic.rs:223:56:
+called `Result::unwrap()` on an `Err` value: Timeout
+└─ esp_backtrace::panic_handler @ /home/ubuntu/.cargo/git/checkouts/esp-hal-42ec44e8c6943228/fe53061/esp-backtrace/src/lib.rs:25  
+ERROR Backtrace:
+└─ esp_backtrace::panic_handler @ /home/ubuntu/.cargo/git/checkouts/esp-hal-42ec44e8c6943228/fe53061/esp-backtrace/src/lib.rs:25  
+ERROR 0x4200098c
+└─ esp_backtrace::panic_handler @ /home/ubuntu/.cargo/git/checkouts/esp-hal-42ec44e8c6943228/fe53061/esp-backtrace/src/lib.rs:25  
+ERROR 0x42003670
+└─ esp_backtrace::panic_handler @ /home/ubuntu/.cargo/git/checkouts/esp-hal-42ec44e8c6943228/fe53061/esp-backtrace/src/lib.rs:25  
+ERROR 0x42000f5e
+└─ esp_backtrace::panic_handler @ /home/ubuntu/.cargo/git/checkouts/esp-hal-42ec44e8c6943228/fe53061/esp-backtrace/src/lib.rs:25  
+ERROR 0x42006b6c
+└─ esp_backtrace::panic_handler @ /home/ubuntu/.cargo/git/checkouts/esp-hal-42ec44e8c6943228/fe53061/esp-backtrace/src/lib.rs:25  
+ERROR 0x42000132
+└─ esp_backtrace::panic_handler @ /home/ubuntu/.cargo/git/checkouts/esp-hal-42ec44e8c6943228/fe53061/esp-backtrace/src/lib.rs:25  

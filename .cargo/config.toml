@@ -15,5 +15,11 @@ rustflags = [
 
 target = "riscv32imc-unknown-none-elf"
 
+# Unfortunately, cannot have '[build.{cfg}]'
+#[build.feature="defmt"]
+#rustflags = [
+#  "-C", "link-arg=-Tdefmt.x"   # using 'build.rs', instead
+#]
+
 [unstable]
 build-std = ["core"]

@@ -5,6 +5,7 @@
     non_camel_case_types,
     non_snake_case,
     non_upper_case_globals,
+    static_mut_refs,
     unused_assignments,
     unused_mut
 )]
