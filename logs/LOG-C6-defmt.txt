@@ -1,0 +1,19 @@
+      Erasing ✔ 100% [####################] 256.00 KiB @ 237.80 KiB/s (took 1s)
+  Programming ✔ 100% [####################] 108.13 KiB @  38.61 KiB/s (took 3s)                                                                                                                    Finished in 3.94s
+ERROR ====================== PANIC ======================
+└─ esp_backtrace::panic_handler @ /home/ubuntu/.cargo/git/checkouts/esp-hal-42ec44e8c6943228/fe53061/esp-backtrace/src/lib.rs:25
+ERROR panicked at examples/basic.rs:178:37:
+called `Result::unwrap()` on an `Err` value: ArbitrationLost
+└─ esp_backtrace::panic_handler @ /home/ubuntu/.cargo/git/checkouts/esp-hal-42ec44e8c6943228/fe53061/esp-backtrace/src/lib.rs:25
+ERROR Backtrace:
+└─ esp_backtrace::panic_handler @ /home/ubuntu/.cargo/git/checkouts/esp-hal-42ec44e8c6943228/fe53061/esp-backtrace/src/lib.rs:25
+ERROR 0x4200066e
+└─ esp_backtrace::panic_handler @ /home/ubuntu/.cargo/git/checkouts/esp-hal-42ec44e8c6943228/fe53061/esp-backtrace/src/lib.rs:25
+ERROR 0x42003158
+└─ esp_backtrace::panic_handler @ /home/ubuntu/.cargo/git/checkouts/esp-hal-42ec44e8c6943228/fe53061/esp-backtrace/src/lib.rs:25
+ERROR 0x42000f4c
+└─ esp_backtrace::panic_handler @ /home/ubuntu/.cargo/git/checkouts/esp-hal-42ec44e8c6943228/fe53061/esp-backtrace/src/lib.rs:25
+ERROR 0x42006f66
+└─ esp_backtrace::panic_handler @ /home/ubuntu/.cargo/git/checkouts/esp-hal-42ec44e8c6943228/fe53061/esp-backtrace/src/lib.rs:25
+ERROR 0x42000132
+└─ esp_backtrace::panic_handler @ /home/ubuntu/.cargo/git/checkouts/esp-hal-42ec44e8c6943228/fe53061/esp-backtrace/src/lib.rs:25

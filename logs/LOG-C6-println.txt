@@ -1,0 +1,55 @@
+$ cargo run --release --example basic
+   Compiling vl53l5 v0.1.0 (/home/ubuntu/vl53l5-c2rust.fork)
+    Finished `release` profile [optimized + debuginfo] target(s) in 1.42s
+     Running `espflash flash --monitor /home/ubuntu/target/riscv32imac-unknown-none-elf/release/examples/basic`
+basic                                                                                                                                                       100% 6059KB   3.9MB/s   00:01
+[2025-02-04T14:38:07Z INFO ] Serial port: '/dev/ttyUSB0'
+[2025-02-04T14:38:07Z INFO ] Connecting...
+[2025-02-04T14:38:08Z INFO ] Using flash stub
+Chip type:         esp32c6 (revision v0.0)
+Crystal frequency: 40 MHz
+Flash size:        4MB
+Features:          WiFi 6, BT 5
+MAC address:       54:32:04:07:15:10
+App/part. size:    144,048/4,128,768 bytes, 3.49%
+[2025-02-04T14:38:10Z INFO ] Segment at address '0x0' has not changed, skipping write
+[2025-02-04T14:38:10Z INFO ] Segment at address '0x8000' has not changed, skipping write
+[00:00:10] [========================================]     100/100     0x10000                                                                                                                 [2025-02-04T14:38:21Z INFO ] Flashing has completed!
+Commands:
+    CTRL+R    Reset chip
+    CTRL+C    Exit
+
+ESP-ROM:esp32c6-20220919
+Build:Sep 19 2022
+rst:0x1 (POWERON),boot:0xc (SPI_FAST_FLASH_BOOT)
+SPIWP:0xee
+mode:DIO, clock div:2
+load:0x4086c410,len:0xd48
+load:0x4086e610,len:0x2d68
+load:0x40875720,len:0x1800
+entry 0x4086c410
+I (23) boot: ESP-IDF v5.1-beta1-378-gea5e0ff298-dirt 2nd stage bootloader
+I (24) boot: compile time Jun  7 2023 08:02:08
+I (25) boot: chip revision: v0.0
+I (29) boot.esp32c6: SPI Speed      : 40MHz
+I (33) boot.esp32c6: SPI Mode       : DIO
+I (38) boot.esp32c6: SPI Flash Size : 4MB
+I (43) boot: Enabling RNG early entropy source...
+I (49) boot: Partition Table:
+I (52) boot: ## Label            Usage          Type ST Offset   Length
+I (59) boot:  0 nvs              WiFi data        01 02 00009000 00006000
+I (67) boot:  1 phy_init         RF data          01 01 0000f000 00001000
+I (74) boot:  2 factory          factory app      00 00 00010000 003f0000
+I (82) boot: End of partition table
+I (86) esp_image: segment 0: paddr=00010020 vaddr=42000020 size=0ad08h ( 44296) map
+I (103) esp_image: segment 1: paddr=0001ad30 vaddr=40800000 size=05c48h ( 23624) load
+I (110) esp_image: segment 2: paddr=00020980 vaddr=42020980 size=01d9ch (  7580) map
+I (113) esp_image: segment 3: paddr=00022724 vaddr=40805c48 size=10b5ch ( 68444) load
+I (140) boot: Loaded app from partition at offset 0x10000
+I (140) boot: Disabling RNG early entropy source...
+alive = 0 1
+init 0
+init done
+alive = 0 1
+start ranging 255
+

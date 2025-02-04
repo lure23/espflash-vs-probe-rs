@@ -31,11 +31,11 @@ fn main() -> ! {
     let i2c = esp_hal::i2c::master::I2c::new(
         peripherals.I2C0,
         esp_hal::i2c::master::Config::default()
-            .with_frequency(1000.kHz()),     // Note: ESP32-C{36} only run up to 400 kHz (right?)
-    )
-    .unwrap()
-    .with_sda(peripherals.GPIO1)
-    .with_scl(peripherals.GPIO2);
+            .with_frequency(1000.kHz()),     // Note: ESP32-C{36} only run 400 kHz (right?)
+        )
+        .unwrap()
+        .with_sda(peripherals.GPIO18)
+        .with_scl(peripherals.GPIO19);
 
     critical_section::with(|cs| {
         I2C.borrow_ref_mut(cs).replace(i2c);

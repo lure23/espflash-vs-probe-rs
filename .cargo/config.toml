@@ -1,6 +1,5 @@
-[target.riscv32imc-unknown-none-elf]
+[target.'cfg(all())']   # both C3 and C6
 runner = "espflash flash --monitor"
-
 
 [env]
 ESP_LOG="info"
@@ -13,10 +12,10 @@ rustflags = [
   "-C", "force-frame-pointers",
 ]
 
-target = "riscv32imc-unknown-none-elf"
+target = "riscv32imac-unknown-none-elf"
 
-# Unfortunately, cannot have '[build.{cfg}]'
-#[build.feature="defmt"]
+# Unfortunately, cannot have '[build.'cfg(...)']'
+#[build.'cfg(feature="defmt")']
 #rustflags = [
 #  "-C", "link-arg=-Tdefmt.x"   # using 'build.rs', instead
 #]

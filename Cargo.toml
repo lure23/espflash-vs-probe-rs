@@ -11,15 +11,15 @@ c2rust-bitfields = { version = "0.19.0", features = ["no_std"] }
 defmt = { version = "0.3.10", optional = true }
 defmt-rtt = { version = "0.4.1", optional = true }
 
-esp-println = { version = "0.13.0", features = ["esp32c3", "log"], optional = true }
+esp-println = { version = "0.13.0", features = ["esp32c6", "log"], optional = true }
 
 [dev-dependencies]
 esp-hal = { version = "0.23.1", features = [
-    "esp32c3",
+    "esp32c6",
 ] }
 
 esp-backtrace = { version = "0.15.0", features = [
-    "esp32c3",
+    "esp32c6",
     "exception-handler",
     "panic-handler",
 ] } # "println"|"defmt"
