@@ -26,8 +26,6 @@ To help debug VL53L5 time-of-flight sensor use, in Rust.
 
 ## Run
 
->Note: ESP32-C3 code is in the `main` branch.
-
 ### default (ESP32-C3; esp-println)
 
 ```
