@@ -161,24 +161,35 @@ called `Result::unwrap()` on an `Err` value: ArbitrationLost
 At the moment, the VL53L5 device is usable only with a narrow combination of devkits (or MCUs), and output features.
 
 
-|devkit|`esp-hal`|`esp-println`|`defmt`|comments|
+|devkit|`esp-hal`|`esp-println`|`defmt`<sup>`[2]`</sup>|comments|
 |---|---|---|---|---|
 |**<nobr>ESP32-C3-DevkitC-02</nobr>**|
 ||`main` (latest; moving target)|✅|❌|
 ||`0.23.1`|✅|*not tested*|
-||`0.23.0`|*not tested*|*not tested*|
-||`0.22.0`|*not tested*|*not tested*|
+||`0.23.0`|✅|*not tested*|
+||`0.22.0`|✅|*not tested*|
 |**ESP32-C6-Devkit-M1**|
 ||`main` (latest; moving target)|❌ scanning does not start; error 255|❌|
-||`0.23.1`|❌ Scanning starts (0), but never reaches `data_ready` state|*not tested*|
-||`0.23.0`|*not tested*|*not tested*|
-||`0.22.0`|*not tested*|*not tested*|
+||`0.23.1`|❌ <!--was: Scanning starts (0), but never reaches `data_ready` state;-->`init 0`, `alive=0 1`, then `AcknowledgeCheckFailed`|❌ Does not start; no output|
+||`0.23.0`|❌ *as 0.23.1*|❌ Does not start; no output|
+||`0.22.0`|❌ *as 0.23.1*|❌ Does not start; no output|
 
-vl53l5cx_check_data_ready
+<small>`[2]`: `defmt` + `defmt-rtt`</small>
+
+<!-- Using:
+
+$ espflash --version
+espflash 3.3.0
+
+$ probe-rs --version
+probe-rs 0.26.0 (git commit: 4fd36e2)
+-->
 
 ### Next steps
 
-- [ ] One could see, how much the used `esp-hal` version (latest `main`, as of 4-Feb-25) affects this.
+- [x] One could see, how much the used `esp-hal` version (latest `main`, as of 4-Feb-25) affects this.
 
-- [ ] Repeat the ESP32-C6 results with another user / devkit / breadboard.
+- [x] Repeat the ESP32-C6 results with another user / devkit / breadboard.
+
+	`bjoernQ` reports things [work for him](https://github.com/bjoernQ/vl53l5-c2rust/issues/1#issuecomment-2635855632)
 

@@ -9,7 +9,7 @@ c2rust-bitfields = { version = "0.19.0", features = ["no_std"] }
 # Cargo: no optional deps for 'dev-dependencies', so placing them up here.
 defmt = { version = "0.3.10", optional = true }
 defmt-rtt = { version = "0.4.1", optional = true }
-esp-println = { version = "0.13.0", features = ["esp32c3", "log"], optional = true }
+esp-println = { version = "0.13.0", features = ["esp32c3"], optional = true }
 
 [dev-dependencies]
 esp-hal = { version = "0.23.1", features = ["esp32c3"] }
@@ -27,6 +27,7 @@ defmt = ["dep:defmt", "dep:defmt-rtt", "esp-backtrace/defmt", "esp-hal/defmt"]  
 default = ["esp-println"]
 
 esp-hal-next = []   # enable to use latest 'main' (also enable the 'patch.crates-io' section, below)
+esp-hal-0_22 = []
 
 [profile.release]
 debug = 2

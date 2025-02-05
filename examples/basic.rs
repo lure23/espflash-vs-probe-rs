@@ -5,7 +5,16 @@ use core::cell::RefCell;
 
 use critical_section::Mutex;
 use esp_backtrace as _;
-use esp_hal::{delay::Delay, main};
+use esp_hal::{
+    delay::Delay,
+    //main
+};
+#[cfg(feature = "esp-hal-next")]
+use esp_hal::{time::Rate};
+#[cfg(not(feature = "esp-hal-0_22"))]
+use esp_hal::main;
+#[cfg(feature = "esp-hal-0_22")]
+use esp_hal::{entry as main};
 
 #[cfg(feature = "esp-println")]
 use esp_println::println;
@@ -34,10 +43,12 @@ fn main() -> ! {
         peripherals.I2C0, {
             let x = esp_hal::i2c::master::Config::default();
             #[cfg(feature="esp-hal-next")]
-            let x = x.with_frequency( Rate::from_kHz(1000) );     // Note: ESP32-C{36} only run up to 400 kHz (right?)
+            let x = x.with_frequency( Rate::from_khz(1000) );     // Note: ESP32-C{36} only run up to 400 kHz (right?)
             x
-        })
-        .unwrap();
+        });
+
+    #[cfg(not(feature = "esp-hal-0_22"))]
+    let i2c = i2c.unwrap();
 
     let i2c = if !ESP32_C6 {    // C3
         i2c.with_sda(peripherals.GPIO1)
