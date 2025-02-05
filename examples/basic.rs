@@ -5,7 +5,7 @@ use core::cell::RefCell;
 
 use critical_section::Mutex;
 use esp_backtrace as _;
-use esp_hal::{delay::Delay, main, time::RateExtU32};
+use esp_hal::{delay::Delay, main};
 
 #[cfg(feature = "esp-println")]
 use esp_println::println;
@@ -31,10 +31,12 @@ fn main() -> ! {
     const ESP32_C6: bool = if cfg!(target_has_atomic = "8") { true } else { false };
 
     let i2c = esp_hal::i2c::master::I2c::new(
-        peripherals.I2C0,
-        esp_hal::i2c::master::Config::default()
-            .with_frequency(1000.kHz()),     // Note: ESP32-C{36} only run up to 400 kHz (right?)
-        )
+        peripherals.I2C0, {
+            let x = esp_hal::i2c::master::Config::default();
+            #[cfg(feature="esp-hal-next")]
+            let x = x.with_frequency( Rate::from_kHz(1000) );     // Note: ESP32-C{36} only run up to 400 kHz (right?)
+            x
+        })
         .unwrap();
 
     let i2c = if !ESP32_C6 {    // C3
@@ -69,8 +71,6 @@ fn main() -> ! {
 
         let status = vl53l5::vl53l5cx_init(&mut p_dev as *mut _);
         println!("init {}", status);
-
-        println!("init done");
 
         let status = vl53l5::vl53l5cx_is_alive(&mut p_dev as *mut _, &mut alive as *mut _);
         println!("alive = {} {}", status, alive);
@@ -108,6 +108,7 @@ fn main() -> ! {
 
             let _status =
                 vl53l5::vl53l5cx_check_data_ready(&mut p_dev as *mut _, &mut isReady as *mut _);
+            //println!("polling: {} {}", _status, isReady);
 
             const VL53L5CX_NB_TARGET_PER_ZONE: usize = 1;
 
@@ -136,6 +137,7 @@ fn main() -> ! {
         }
 
         let _status = vl53l5::vl53l5cx_stop_ranging(&mut p_dev as *mut _);
+
         println!("End of ULD demo");
     }
 

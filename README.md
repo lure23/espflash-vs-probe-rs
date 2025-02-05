@@ -26,10 +26,12 @@ To help debug VL53L5 time-of-flight sensor use, in Rust.
 
 ## Run
 
+Contents of the `main` branch are set up for targetting ESP32-C3.
+
 ### default (ESP32-C3; esp-println)
 
 ```
-$ cargo run --release --example basic
+$ cargo run --release --features=esp-hal-next --example basic
 ```
 
 - Flashes and shows output via `espflash flash`
@@ -59,7 +61,7 @@ Zone : 5, Status : 4, Distance : 1762 mm
 For `defmt`, we do separate build and run steps. 
 
 ```
-$ cargo build --release --no-default-features --features=defmt --example basic
+$ cargo build --release --no-default-features --features=defmt,esp-hal-next --example basic
 $ probe-rs run target/riscv32imc-unknown-none-elf/release/examples/basic
 ```
 
@@ -89,11 +91,25 @@ ERROR 0x42000132
 └─ esp_backtrace::panic_handler @ /home/ubuntu/.cargo/git/checkouts/esp-hal-42ec44e8c6943228/fe53061/esp-backtrace/src/lib.rs:25  
 ```
 
+### Change to ESP32-C6
+
+>Commands on macOS `bash`.
+
+```
+$ sed -i '' -e s/riscv32imc-unknown-none-elf/riscv32imac-unknown-none-elf/ .cargo/config.toml 
+```
+
+```
+$ sed -i '' -e s/esp32c3/esp32c6/ Cargo.toml
+```
+
+Now we can proceed building and running the code on ESP32-C6.
+
+
 ### `esp-println` (ESP32-C6)
 
 ```
-$ git checkout c6
-$ cargo run --release --example basic
+$ cargo run --release --features=esp-hal-next --example basic
 ```
 
 - Flashes and shows output via `espflash flash`
@@ -122,9 +138,7 @@ Tested on two separate sensors, one known to work on C3.
 For `defmt`, we do separate build and run steps. 
 
 ```
-$ git checkout c6
-
-$ cargo build --release --no-default-features --features=defmt --example basic
+$ cargo build --release --no-default-features --features=defmt,esp-hal-next --example basic
 $ probe-rs run target/riscv32imac-unknown-none-elf/release/examples/basic
 ```
 
@@ -147,11 +161,20 @@ called `Result::unwrap()` on an `Err` value: ArbitrationLost
 At the moment, the VL53L5 device is usable only with a narrow combination of devkits (or MCUs), and output features.
 
 
-|devkit|`esp-println`|`defmt`|comments|
-|---|---|---|---|
-|<nobr>ESP32-C3-DevkitC-02</nobr>|✅|❌|
-|ESP32-C6-Devkit-M1|❌ scanning does not start; error 255|❌|
+|devkit|`esp-hal`|`esp-println`|`defmt`|comments|
+|---|---|---|---|---|
+|**<nobr>ESP32-C3-DevkitC-02</nobr>**|
+||`main` (latest; moving target)|✅|❌|
+||`0.23.1`|✅|*not tested*|
+||`0.23.0`|*not tested*|*not tested*|
+||`0.22.0`|*not tested*|*not tested*|
+|**ESP32-C6-Devkit-M1**|
+||`main` (latest; moving target)|❌ scanning does not start; error 255|❌|
+||`0.23.1`|❌ Scanning starts (0), but never reaches `data_ready` state|*not tested*|
+||`0.23.0`|*not tested*|*not tested*|
+||`0.22.0`|*not tested*|*not tested*|
 
+vl53l5cx_check_data_ready
 
 ### Next steps
 

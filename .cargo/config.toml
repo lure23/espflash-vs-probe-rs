@@ -1,6 +1,5 @@
-[target.riscv32imc-unknown-none-elf]
+[target.'cfg(all())']   # unconditional
 runner = "espflash flash --monitor"
-
 
 [env]
 ESP_LOG="info"
