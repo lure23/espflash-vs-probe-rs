@@ -7,10 +7,11 @@ use critical_section::Mutex;
 use esp_backtrace as _;
 use esp_hal::{
     delay::Delay,
+    gpio::{Output, Level, /*OutputConfig*/}
     //main
 };
 #[cfg(feature = "esp-hal-next")]
-use esp_hal::{time::Rate};
+use esp_hal::{gpio::OutputConfig, time::Rate};
 #[cfg(not(feature = "esp-hal-0_22"))]
 use esp_hal::main;
 #[cfg(feature = "esp-hal-0_22")]
@@ -28,35 +29,54 @@ static I2C: Mutex<RefCell<Option<esp_hal::i2c::master::I2c<esp_hal::Blocking>>>>
     Mutex::new(RefCell::new(None));
 static DELAY: Mutex<RefCell<Option<Delay>>> = Mutex::new(RefCell::new(None));
 
+const ESP32_C6: bool = if cfg!(target_has_atomic = "8") { true } else { false };
+
 #[main]
 fn main() -> ! {
-    #[cfg(feature="esp-println")]
-    esp_println::logger::init_logger_from_env();
+    //R #[cfg(feature="esp-println")]
+    //R esp_println::logger::init_logger_from_env();
 
     let peripherals = esp_hal::init(esp_hal::Config::default());
 
     let delay = Delay::new();
 
-    const ESP32_C6: bool = if cfg!(target_has_atomic = "8") { true } else { false };
+    let i2c = {
+        let xx = esp_hal::i2c::master::I2c::new(
+            peripherals.I2C0, {
+                let x = esp_hal::i2c::master::Config::default();
+                #[cfg(feature="esp-hal-next")]
+                let x = x.with_frequency( Rate::from_khz(1000) );     // Note: ESP32-C{36} only run up to 400 kHz (right?)
+                x
+            });
 
-    let i2c = esp_hal::i2c::master::I2c::new(
-        peripherals.I2C0, {
-            let x = esp_hal::i2c::master::Config::default();
-            #[cfg(feature="esp-hal-next")]
-            let x = x.with_frequency( Rate::from_khz(1000) );     // Note: ESP32-C{36} only run up to 400 kHz (right?)
-            x
-        });
+        #[cfg(not(feature = "esp-hal-0_22"))]
+        let xx = xx.unwrap();
 
-    #[cfg(not(feature = "esp-hal-0_22"))]
-    let i2c = i2c.unwrap();
-
-    let i2c = if !ESP32_C6 {    // C3
-        i2c.with_sda(peripherals.GPIO1)
-            .with_scl(peripherals.GPIO2)
-    } else {
-        i2c.with_sda(peripherals.GPIO18)
-            .with_scl(peripherals.GPIO19)
+        if !ESP32_C6 {    // C3
+            xx.with_sda(peripherals.GPIO1)
+                .with_scl(peripherals.GPIO2)
+        } else {
+            xx.with_sda(peripherals.GPIO18)
+                .with_scl(peripherals.GPIO19)
+        }
     };
+
+    // SATEL board: reset by bringing 'PWR_EN' momentarily down
+    {
+        let pin = peripherals.GPIO21;
+
+        #[allow(non_snake_case)]
+        #[cfg(feature="esp-hal-next")]
+        let mut PWR_EN = Output::new(pin, Level::Low, OutputConfig::default());
+        #[allow(non_snake_case)]
+        #[cfg(not(feature="esp-hal-next"))]
+        let mut PWR_EN = Output::new(pin, Level::Low);
+
+        PWR_EN.set_low();
+        blocking_delay_ms(10);      // 10ms based on UM2884 (PDF; 18pp) Rev. 6, Chapter 4.2
+        PWR_EN.set_high();
+        println!("SATEL board powered off and on again.");
+    }
 
     critical_section::with(|cs| {
         I2C.borrow_ref_mut(cs).replace(i2c);
@@ -281,4 +301,11 @@ extern "C" fn WaitMs(_p_platform: *mut vl53l5::VL53L5CX_Platform, time_ms: u32) 
             .delay_millis(time_ms);
     });
     0
+}
+
+// There should not be a reason to keep 'DELAY' a mutex-protected shared, is there?
+const D_PROVIDER: Delay = Delay::new();
+
+fn blocking_delay_ms(ms: u32) {
+    D_PROVIDER.delay_millis(ms);
 }
