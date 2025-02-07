@@ -21,9 +21,24 @@ fn main() {
     #[cfg(all(feature="esp-hal-next", feature="esp-hal-0_22"))]
     compile_error!("Cannot have both 'esp-hal-next' and 'esp-hal-0_22' enabled.");
 
+    {
+        let count= 0;
+        #[cfg(feature="espflash-println")]
+        let count = count + 1;
+        #[cfg(feature="espflash-log")]
+        let count = count + 1;
+        #[cfg(feature="espflash-defmt")]
+        let count = count + 1;
+        #[cfg(feature="probe_rs-defmt")]
+        let count = count + 1;
+
+        assert!(count > 0, "One 'espflash-*' or 'probe_rs-*' feature must be enabled");
+        assert!(count == 1, "Only one 'espflash-*' or 'probe_rs-*' feature must be enabled");
+    }
+
     // Link arguments
     {
-        #[cfg(feature="defmt")]
+        #[cfg(feature="_defmt")]
         println!("cargo::rustc-link-arg={}", "-Tdefmt.x");
     }
 }

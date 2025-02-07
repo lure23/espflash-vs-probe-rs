@@ -1,10 +1,19 @@
-[target.'cfg(not(feature="defmt"))']
+[target.'cfg(any(feature="espflash-println", feature="espflash-log"))']
 runner = "espflash flash --monitor"
-[target.'cfg(feature="defmt")']
-runner = "espflash flash --log-format defmt --monitor"
+
+#[target.'cfg(feature="espflash-defmt")']
+#runner = "espflash flash --log-format defmt --monitor"
+
+#[target.'cfg(feature="probe_rs-defmt")']
+#runner = ["probe-rs", "run", "--log-format={{t:dimmed} [{L:bold}]} {s}  {{c} {ff}:{l:1}%dimmed}"]
+  # did not work:
+  # <<
+  #   /home/ubuntu/target/riscv32imc-unknown-none-elf/release/examples/basic: 1: Syntax error: "(" unexpected
+  # <<
 
 [env]
-ESP_LOG="debug"
+ESP_LOG="info"    # *should* affect the 'espflash-log' feature (didn't..)
+DEFMT_LOG="info"  # should affect the '-defmt' features
 
 [build]
 rustflags = [
@@ -17,10 +26,7 @@ rustflags = [
 target = "riscv32imc-unknown-none-elf"
 
 # Unfortunately, cannot have '[build.'cfg(...)']'
-#[build.'cfg(feature="defmt")']
+#[build.'cfg(feature="_defmt")']
 #rustflags = [
 #  "-C", "link-arg=-Tdefmt.x"   # using 'build.rs', instead
 #]
-
-[unstable]
-build-std = ["core"]

@@ -7,7 +7,8 @@ use critical_section::Mutex;
 use esp_backtrace as _;
 use esp_hal::{
     delay::Delay,
-    gpio::{Output, Level, /*OutputConfig*/}
+    gpio::{Output, Level, /*OutputConfig*/},
+    i2c::master::I2c,
     //main
 };
 #[cfg(feature = "esp-hal-next")]
@@ -17,25 +18,24 @@ use esp_hal::main;
 #[cfg(feature = "esp-hal-0_22")]
 use esp_hal::{entry as main};
 
-#[cfg(not(feature = "defmt"))]
-use esp_println::println;
-#[cfg(feature = "defmt")]
-use defmt::{info, info as println, assert, panic};
+#[cfg(feature = "espflash-defmt")]
+use esp_println as _;
 
-static I2C: Mutex<RefCell<Option<esp_hal::i2c::master::I2c<esp_hal::Blocking>>>> =
-    Mutex::new(RefCell::new(None));
+#[cfg(feature = "probe_rs-defmt")]
+use defmt_rtt as _;
+
+pub(crate) mod fmt;
+
+static I2C: Mutex<RefCell<Option<I2c<esp_hal::Blocking>>>> = Mutex::new(RefCell::new(None));
 
 const ESP32_C3: bool = ! cfg!(target_has_atomic = "8");
 
 #[main]
 fn main() -> ! {
-    #[cfg(feature="defmt")]
+    #[cfg(feature="_log")]
     esp_println::logger::init_logger_from_env();
-
-    println!("Me here!!!");     // THESE DON*T SHOW WITH 'defmt' FEATURE ENABLED
-    #[cfg(feature="defmt")]
-    info!("I'm here!");
-    panic!("abc");
+    #[cfg(feature = "_defmt")]
+    init_defmt();
 
     let peripherals = esp_hal::init(esp_hal::Config::default());
 
@@ -75,7 +75,7 @@ fn main() -> ! {
         PWR_EN.set_low();
         blocking_delay_ms(10);      // 10ms based on UM2884 (PDF; 18pp) Rev. 6, Chapter 4.2
         PWR_EN.set_high();
-        println!("SATEL board powered off and on again.");
+        info!("SATEL board powered off and on again.");
     }
 
     critical_section::with(|cs| {
@@ -98,16 +98,16 @@ fn main() -> ! {
 
         let mut alive = 0u8;
         let status = vl53l5::vl53l5cx_is_alive(&mut p_dev as *mut _, &mut alive as *mut _);
-        println!("alive = {} {}", status, alive);
+        info!("alive = {} {}", status, alive);
 
         let status = vl53l5::vl53l5cx_init(&mut p_dev as *mut _);
-        println!("init {}", status);
+        info!("init {}", status);
 
         let status = vl53l5::vl53l5cx_is_alive(&mut p_dev as *mut _, &mut alive as *mut _);
-        println!("alive = {} {}", status, alive);
+        info!("alive = {} {}", status, alive);
 
         let status = vl53l5::vl53l5cx_start_ranging(&mut p_dev as *mut _);
-        println!("start ranging {}", status);
+        info!("start ranging {}", status);
 
         let mut _loop = 0;
         let mut isReady = 0u8;
@@ -139,7 +139,7 @@ fn main() -> ! {
 
             let _status =
                 vl53l5::vl53l5cx_check_data_ready(&mut p_dev as *mut _, &mut isReady as *mut _);
-            //println!("polling: {} {}", _status, isReady);
+            //info!("polling: {} {}", _status, isReady);
 
             const VL53L5CX_NB_TARGET_PER_ZONE: usize = 1;
 
@@ -149,16 +149,16 @@ fn main() -> ! {
                 /* As the sensor is set in 4x4 mode by default, we have a total
                  * of 16 zones to print. For this example, only the data of first zone are
                  * print */
-                println!("Print data no : {}", p_dev.streamcount);
+                info!("Print data no : {}", p_dev.streamcount);
                 for i in 0..16 {
-                    println!(
+                    info!(
                         "Zone : {}, Status : {}, Distance : {} mm\n",
                         i,
                         Results.target_status[VL53L5CX_NB_TARGET_PER_ZONE * i],
                         Results.distance_mm[VL53L5CX_NB_TARGET_PER_ZONE * i]
                     );
                 }
-                println!("\n");
+                info!("\n");
                 // _loop += 1;
             }
 
@@ -170,7 +170,7 @@ fn main() -> ! {
 
         let _status = vl53l5::vl53l5cx_stop_ranging(&mut p_dev as *mut _);
 
-        println!("End of ULD demo");
+        info!("End of ULD demo");
     }
 
     loop {}
@@ -321,4 +321,22 @@ const D_PROVIDER: Delay = Delay::new();
 
 fn blocking_delay_ms(ms: u32) {
     D_PROVIDER.delay_millis(ms);
+}
+
+#[cfg(feature = "_defmt")]
+fn init_defmt() {
+    #[cfg(feature="esp-hal-next")]
+    use esp_hal::time::Instant;
+    #[cfg(not(feature="esp-hal-next"))]
+    use esp_hal::time::now;
+
+    defmt::timestamp!("{=u64:us}", {
+        #[cfg(feature="esp-hal-next")]
+        {
+            let now = Instant::now();
+            now.duration_since_epoch().as_micros()
+        }
+        #[cfg(not(feature="esp-hal-next"))]
+        now().duration_since_epoch().to_micros()
+    });
 }
