@@ -1,8 +1,10 @@
-[target.'cfg(all())']   # unconditional
+[target.'cfg(not(feature="defmt"))']
 runner = "espflash flash --monitor"
+[target.'cfg(feature="defmt")']
+runner = "espflash flash --log-format defmt --monitor"
 
 [env]
-ESP_LOG="info"
+ESP_LOG="debug"
 
 [build]
 rustflags = [

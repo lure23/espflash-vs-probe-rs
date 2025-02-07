@@ -162,16 +162,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "defmt-rtt"
-version = "0.4.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bab697b3dbbc1750b7c8b821aa6f6e7f2480b47a99bc057a2ed7b170ebef0c51"
-dependencies = [
- "critical-section",
- "defmt",
-]
-
-[[package]]
 name = "delegate"
 version = "0.13.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -372,7 +362,6 @@ name = "esp-backtrace"
 version = "0.15.0"
 source = "git+https://github.com/esp-rs/esp-hal.git#392d5ccdc1a3ece0bf0ee5998e7e1686aaac7539"
 dependencies = [
- "defmt",
  "esp-build",
  "esp-println",
 ]
@@ -478,6 +467,7 @@ version = "0.13.0"
 source = "git+https://github.com/esp-rs/esp-hal.git#392d5ccdc1a3ece0bf0ee5998e7e1686aaac7539"
 dependencies = [
  "critical-section",
+ "defmt",
  "esp-build",
  "log",
  "portable-atomic",
@@ -1040,7 +1030,6 @@ dependencies = [
  "c2rust-bitfields",
  "critical-section",
  "defmt",
- "defmt-rtt",
  "esp-backtrace",
  "esp-hal",
  "esp-println",

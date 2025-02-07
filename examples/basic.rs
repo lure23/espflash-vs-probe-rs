@@ -17,28 +17,27 @@ use esp_hal::main;
 #[cfg(feature = "esp-hal-0_22")]
 use esp_hal::{entry as main};
 
-#[cfg(feature = "esp-println")]
+#[cfg(not(feature = "defmt"))]
 use esp_println::println;
 #[cfg(feature = "defmt")]
-use {
-    defmt::{info as println, assert},
-    defmt_rtt as _
-};
+use defmt::{info, info as println, assert, panic};
 
 static I2C: Mutex<RefCell<Option<esp_hal::i2c::master::I2c<esp_hal::Blocking>>>> =
     Mutex::new(RefCell::new(None));
-static DELAY: Mutex<RefCell<Option<Delay>>> = Mutex::new(RefCell::new(None));
 
 const ESP32_C3: bool = ! cfg!(target_has_atomic = "8");
 
 #[main]
 fn main() -> ! {
-    //R #[cfg(feature="esp-println")]
-    //R esp_println::logger::init_logger_from_env();
+    #[cfg(feature="defmt")]
+    esp_println::logger::init_logger_from_env();
+
+    println!("Me here!!!");     // THESE DON*T SHOW WITH 'defmt' FEATURE ENABLED
+    #[cfg(feature="defmt")]
+    info!("I'm here!");
+    panic!("abc");
 
     let peripherals = esp_hal::init(esp_hal::Config::default());
-
-    let delay = Delay::new();
 
     let i2c = {
         let xx = esp_hal::i2c::master::I2c::new(
@@ -81,7 +80,7 @@ fn main() -> ! {
 
     critical_section::with(|cs| {
         I2C.borrow_ref_mut(cs).replace(i2c);
-        DELAY.borrow_ref_mut(cs).replace(delay);
+        //DELAY.borrow_ref_mut(cs).replace(delay);
     });
 
     unsafe {
@@ -165,7 +164,8 @@ fn main() -> ! {
 
             /* Wait a few ms to avoid too high polling (function in platform
              * file, not in API) */
-            WaitMs(&mut p_dev.platform as *mut _, 5);
+            //WaitMs(&mut p_dev.platform as *mut _, 5);
+            blocking_delay_ms(5);
         }
 
         let _status = vl53l5::vl53l5cx_stop_ranging(&mut p_dev as *mut _);
@@ -180,7 +180,7 @@ const ADDRESS: u8 = 0x29;
 
 #[no_mangle]
 extern "C" fn RdByte(
-    p_platform: *mut vl53l5::VL53L5CX_Platform,
+    _p_platform: *mut vl53l5::VL53L5CX_Platform,
     register_adress: u16,
     p_value: *mut u8,
 ) -> u8 {
@@ -194,7 +194,8 @@ extern "C" fn RdByte(
         i2c.write(ADDRESS, &[reg[0], reg[1]]).unwrap();
         i2c.read(ADDRESS, &mut buffer).unwrap();
 
-        WaitMs(p_platform, 1);
+        blocking_delay_ms(1);
+        //WaitMs(p_platform, 1);
 
         unsafe {
             *p_value = buffer[0];
@@ -205,7 +206,7 @@ extern "C" fn RdByte(
 
 #[no_mangle]
 extern "C" fn WrByte(
-    p_platform: *mut vl53l5::VL53L5CX_Platform,
+    _p_platform: *mut vl53l5::VL53L5CX_Platform,
     register_adress: u16,
     value: u8,
 ) -> u8 {
@@ -218,7 +219,8 @@ extern "C" fn WrByte(
         let buffer = [reg[0], reg[1], value];
 
         i2c.write(ADDRESS, &buffer).unwrap();
-        WaitMs(p_platform, 1);
+        //WaitMs(p_platform, 1);
+        blocking_delay_ms(1);
 
         //     log::info!("wrote reg {} -> {}", RegisterAdress, value);
         0
@@ -241,6 +243,8 @@ extern "C" fn RdMulti(
         let rdata = unsafe { core::slice::from_raw_parts_mut(p_values, size as usize) };
         i2c.write_read(ADDRESS, &reg, rdata).unwrap();
     });
+
+    blocking_delay_ms(1);       // does it need this???
     0
 }
 
@@ -251,6 +255,8 @@ extern "C" fn WrMulti(
     p_values: *mut u8,
     size: u32,
 ) -> u8 {
+    use esp_hal::i2c::master::Operation;
+
     critical_section::with(|cs| {
         let reg = register_adress.to_be_bytes();
 
@@ -259,23 +265,14 @@ extern "C" fn WrMulti(
 
         let data = unsafe { core::slice::from_raw_parts_mut(p_values, size as usize) };
 
-        #[cfg(not(all()))]  // original; using a buffer
-        {
-            let mut wdata = [0u8; 32770];
-            wdata[0..][..2].copy_from_slice(&reg);
-            wdata[2..][..data.len()].copy_from_slice(data);
-            i2c.write(ADDRESS, &wdata[..(2 + data.len())]).unwrap();
-        }
-        #[cfg(all())]   // write-write transaction (not directly supported by 'esp-hal' API)
-                        // based on esp-hal 'hil-test/tests/i2c.rs'
-        {
-            use esp_hal::i2c::master::Operation;
-            i2c.transaction(ADDRESS,
-        &mut [Operation::Write(&reg), Operation::Write(&data)]
-            ).unwrap();
-        }
+        // write-write transaction (not directly supported by 'esp-hal' API); based on esp-hal
+        // 'hil-test/tests/i2c.rs'
+        //
+        i2c.transaction(ADDRESS, &mut [Operation::Write(&reg), Operation::Write(&data)])
+            .unwrap();
     });
 
+    blocking_delay_ms(1);       // does it need this???
     0
 }
 
@@ -305,6 +302,8 @@ pub extern "C" fn SwapBuffer(buf: *mut u8, size: u16 /*size in bytes; not words*
 
 #[no_mangle]
 extern "C" fn WaitMs(_p_platform: *mut vl53l5::VL53L5CX_Platform, time_ms: u32) -> u8 {
+
+    /***
     critical_section::with(|cs| {
         DELAY
             .borrow_ref_mut(cs)
@@ -312,6 +311,8 @@ extern "C" fn WaitMs(_p_platform: *mut vl53l5::VL53L5CX_Platform, time_ms: u32) 
             .unwrap()
             .delay_millis(time_ms);
     });
+    ***/
+    blocking_delay_ms(time_ms);
     0
 }
 

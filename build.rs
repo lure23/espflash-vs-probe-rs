@@ -18,9 +18,6 @@ fn main() {
         std::process::exit(1);
     }
 
-    #[cfg(all(feature="esp-println", feature="defmt"))]
-    compile_error!("Please enable either 'esp-println' or 'defmt' feature");
-
     #[cfg(all(feature="esp-hal-next", feature="esp-hal-0_22"))]
     compile_error!("Cannot have both 'esp-hal-next' and 'esp-hal-0_22' enabled.");
 

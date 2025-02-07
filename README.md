@@ -61,8 +61,13 @@ For `defmt`, we do separate build and run steps.
 
 ```
 $ cargo build --release --no-default-features --features=defmt,esp-hal-next --example basic
-$ probe-rs run target/riscv32imc-unknown-none-elf/release/examples/basic
 ```
+
+<!-- noo-oup
+```
+$ probe-rs run target/riscv32imc-unknown-none-elf/release/examples/basic</strike>
+```
+-->
 
 - Connect a USB cable to the `USB/JTAG` port of your ESP32 devkit (optional for ESP32-C3 devkit).
 
