@@ -9,20 +9,19 @@ To help debug VL53L5 time-of-flight sensor use, in Rust.
 
 ## Wiring
 
-|MCU|Satel|other/comments|
-|---|---|---|---|
+|ESP32-C3 pins|Satel|other/comments|
+|---|---|---|
 |GND|1. GND|
 |3v3|2. 3v3|
 |5V|3. 5V|
-|--|4. PWR_EN|via ~47kΩ to +3v3|
+|GPIO6|4. PWR_EN|Alternatively, via ~47kΩ to +3v3|
 |--|5. --|*pulled up by Satel*|
-|GPIO2<sup>`|*|`</sup>|6. SCL|
-|GPIO1<sup>`|**|`</sup>|7. SDA|
+|GPIO4|6. SCL|
+|GPIO5|7. SDA|
 |--|8. --||
 |--|9. --||
 
->`|*|`: For ESP32-C6, GPIO19
->`|**|`: For ESP32-C6, GPIO18
+>For ESP32-C6 pins, see the source.
 
 ## Run
 

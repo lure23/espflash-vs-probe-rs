@@ -29,7 +29,7 @@ static I2C: Mutex<RefCell<Option<esp_hal::i2c::master::I2c<esp_hal::Blocking>>>>
     Mutex::new(RefCell::new(None));
 static DELAY: Mutex<RefCell<Option<Delay>>> = Mutex::new(RefCell::new(None));
 
-const ESP32_C6: bool = if cfg!(target_has_atomic = "8") { true } else { false };
+const ESP32_C3: bool = ! cfg!(target_has_atomic = "8");
 
 #[main]
 fn main() -> ! {
@@ -52,9 +52,9 @@ fn main() -> ! {
         #[cfg(not(feature = "esp-hal-0_22"))]
         let xx = xx.unwrap();
 
-        if !ESP32_C6 {    // C3
-            xx.with_sda(peripherals.GPIO1)
-                .with_scl(peripherals.GPIO2)
+        if ESP32_C3 {
+            xx.with_sda(peripherals.GPIO4)
+                .with_scl(peripherals.GPIO5)
         } else {
             xx.with_sda(peripherals.GPIO18)
                 .with_scl(peripherals.GPIO19)
@@ -63,7 +63,8 @@ fn main() -> ! {
 
     // SATEL board: reset by bringing 'PWR_EN' momentarily down
     {
-        let pin = peripherals.GPIO21;
+        use esp_hal::gpio::AnyPin;
+        let pin: AnyPin = if ESP32_C3 { peripherals.GPIO6.into() } else { peripherals.GPIO21.into() };
 
         #[allow(non_snake_case)]
         #[cfg(feature="esp-hal-next")]
@@ -258,10 +259,21 @@ extern "C" fn WrMulti(
 
         let data = unsafe { core::slice::from_raw_parts_mut(p_values, size as usize) };
 
-        let mut wdata = [0u8; 32770];
-        wdata[0..][..2].copy_from_slice(&reg);
-        wdata[2..][..data.len()].copy_from_slice(data);
-        i2c.write(ADDRESS, &wdata[..(2 + data.len())]).unwrap();
+        #[cfg(not(all()))]  // original; using a buffer
+        {
+            let mut wdata = [0u8; 32770];
+            wdata[0..][..2].copy_from_slice(&reg);
+            wdata[2..][..data.len()].copy_from_slice(data);
+            i2c.write(ADDRESS, &wdata[..(2 + data.len())]).unwrap();
+        }
+        #[cfg(all())]   // write-write transaction (not directly supported by 'esp-hal' API)
+                        // based on esp-hal 'hil-test/tests/i2c.rs'
+        {
+            use esp_hal::i2c::master::Operation;
+            i2c.transaction(ADDRESS,
+        &mut [Operation::Write(&reg), Operation::Write(&data)]
+            ).unwrap();
+        }
     });
 
     0
