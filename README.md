@@ -1,13 +1,31 @@
-# vl53l5-c2rust
+# espflash vs. probe-rs
 
-Setting up logging while using the VL53L5 time-of-flight sensor.
+There are implication to selecting the logging strategy for embedded ESP32 Rust projects. The strategies are not clearly defined, or documented. It's kind of like a Wild West.
 
-Four logging variations on two ESP32 MCUs.
+Belowm the author places them in four categories.
 
-- `espflash-println`: using `println!` macros; run using `espflash --monitor`
-- `espflash-log`: using `{debug|info|warn|...}!` macros; run using `espflash --monitor`
-- `espflash-defmt`: using `{debug|info|warn|...}!` macros; run using `espflash monitor --log-format defmt`
-- `probe_rs-defmt`: using `{debug|info|warn|...}!` macros; run using `probe-rs`
+The repo examines the compatibility of each of the strategies with the ST.com [VL53L5CX](https://www.st.com/en/imaging-and-photonics-solutions/vl53l5cx.html) time-of-flight sensor.
+
+>Why VL53L5CX??? Because the sensor('s use of I2C bus) has some compatibility issues with `probe-rs`, which lead the author down this 🐰🕳️
+ to begin with.
+ 
+## Four logging strategies
+
+### `espflash-println`
+
+Uses `println!` macros; run using `espflash --monitor`; depends on: [`esp-println`]()
+
+### `espflash-log`
+
+Uses `{debug|info|warn|...}!` macros; run using `espflash --monitor`; depends on: [`log`](), [`esp-println`]()
+
+### `espflash-defmt`
+
+Uses `{debug|info|warn|...}!` macros; run using `espflash monitor --log-format defmt`; depends on: [`defmt`](), [`esp-println`]()
+
+### `probe_rs-defmt`
+
+Uses `{debug|info|warn|...}!` macros; run using `probe-rs`; depends on: [`defmt`](), [`defmt-rtt`]()
 
 
 ## Requirements
@@ -32,15 +50,6 @@ Four logging variations on two ESP32 MCUs.
 
 >For ESP32-C6 pins, see the source.
 
-## Selection of the MCU
-
-Run either:
-
-```
-$ sh/set-c3.sh
-$ sh/set-c6.sh
-```
-
 
 ## Run
 
@@ -61,15 +70,10 @@ Sample output:
 [...]
 Print data no : 23
 Zone : 0, Status : 5, Distance : 1741 mm
-
 Zone : 1, Status : 5, Distance : 1785 mm
-
 Zone : 2, Status : 4, Distance : 1785 mm
-
 Zone : 3, Status : 5, Distance : 1850 mm
-
 Zone : 4, Status : 5, Distance : 1748 mm
-
 Zone : 5, Status : 4, Distance : 1762 mm
 [...]
 ```
@@ -89,17 +93,11 @@ Sample output:
 [...]
 INFO - Print data no : 4
 INFO - Zone : 0, Status : 5, Distance : 1777 mm
-
 INFO - Zone : 1, Status : 5, Distance : 1776 mm
-
 INFO - Zone : 2, Status : 5, Distance : 1776 mm
-
 INFO - Zone : 3, Status : 5, Distance : 1778 mm
-
 INFO - Zone : 4, Status : 5, Distance : 1782 mm
-
 INFO - Zone : 5, Status : 5, Distance : 1778 mm
-
 INFO - Zone : 6, Status : 5, Distance : 1780 mm
 [...]
 ```
@@ -131,26 +129,21 @@ Output:
 ```
 [...]
 9.304684 INFO Zone : 0, Status : 4, Distance : 1796 mm
-
 9.304828 INFO Zone : 1, Status : 4, Distance : 1777 mm
-
 9.304955 INFO Zone : 2, Status : 255, Distance : 83 mm
-
 9.305079 INFO Zone : 3, Status : 255, Distance : 82 mm
-
 9.305206 INFO Zone : 4, Status : 4, Distance : 1781 mm
-
 9.305332 INFO Zone : 5, Status : 4, Distance : 1774 mm
-
 9.305461 INFO Zone : 6, Status : 255, Distance : 90 mm
-
 9.305580 INFO Zone : 7, Status : 255, Distance : 90 mm
-
 [...]
 ```
 
-This is pretty nice. We get time stamps, log levels (colored only on the `INFO`, not the whole lines).
+We get time stamps, log levels (colored only on the `INFO`, not the whole lines).
 
+<!-- yes, it was... hilarious 🤦
+>tbd. Why are there extra linefeeds???  Can we get rid of that?
+-->
 
 ### `probe_rs-defmt`
 
@@ -181,7 +174,7 @@ Finished in 5.05s
 
 >Note: `probe-rs` provides nicer coloring than `espflash`, and the log format can be fine tuned.
 
-Unfortunately, `probe-rs` (0.26.0) does not work with `esp-hal` I2C access (likely the reason behind the panic; founded guess, not proven here..).
+Unfortunately, `probe-rs` (0.26.0) does not work with `esp-hal` I2C access (long story, documented elsewhere; RTT stopping the MCU core disturbs I2C traffic).
 
 
 
@@ -190,13 +183,18 @@ Unfortunately, `probe-rs` (0.26.0) does not work with `esp-hal` I2C access (like
 If you wish to try on another MCU:
 
 ```
-$ sed -i '' -e s/riscv32imc-unknown-none-elf/riscv32imac-unknown-none-elf/ .cargo/config.toml 
+$ cat .cargo/config.toml | sed -E 's/riscv32im[a]?c/riscv32imac/g' > .tmp
+$ mv .tmp .cargo/config.toml
 ```
 
 ```
-$ sed -i '' -e s/esp32c3/esp32c6/ Cargo.toml
+$ cat Cargo.toml | sed -E 's/"esp32c[[:digit:]]"/"esp32c6"/g' > .tmp
+$ mv .tmp Cargo.toml
 ```
 
+<!-- Editor's note:
+The 'sed' in-place-editing syntax that *could* work on both macOS and Linux is so brittle, it's not worth exposing.
+-->
 
 ## Summary
 
@@ -207,14 +205,10 @@ At the moment, the VL53L5 device is usable only with a narrow combination of dev
 |---|---|---|---|---|---|
 |**<nobr>ESP32-C3-DevkitC-02</nobr>**|
 ||`main` (latest; moving target)|✅|✅|✅|❌|
-||`0.23.1`|✅|||*not tested*|
-||`0.23.0`|✅|||*not tested*|
-||`0.22.0`|✅|||*not tested*|
 |**ESP32-C6-Devkit-M1**|
 ||`main` (latest; moving target)|❌ scanning does not start; error 255|||❌|
-||`0.23.1`|❌ <!--was: Scanning starts (0), but never reaches `data_ready` state;-->`init 0`, `alive=0 1`, then `AcknowledgeCheckFailed`|||❌ Does not start; no output|
-||`0.23.0`|❌ *as 0.23.1*|||❌ Does not start; no output|
-||`0.22.0`|❌ *as 0.23.1*|||❌ Does not start; no output|
+||`0.23.1`|❌ *as above*|||❌ Does not start; no output|
+||`0.23.0`|❌ *as above*|||❌ Does not start; no output|
 
 <!-- Using:
 
@@ -226,8 +220,6 @@ probe-rs 0.26.0 (git commit: 4fd36e2)
 -->
 
 ### Next steps
-
-- [ ] Fix the build problems; complete the table
 
 - [ ] Repeat the ESP32-C6 results with another devkit / breadboard.
 

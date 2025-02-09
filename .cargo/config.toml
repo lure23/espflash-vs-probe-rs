@@ -1,15 +1,18 @@
-[target.'cfg(any(feature="espflash-println", feature="espflash-log"))']
+[target.'cfg(all())']
 runner = "espflash flash --monitor"
 
+# Note: CANNOT use 'feature' to change the runners. This does pass IDE, and builds, but works wrong.
+#     It's a known thing in Rust. If you are friendly, please ask an error to be created with this kind of constructs.
+#
+#     At running:
+#     <<
+#       /home/ubuntu/target/riscv32imXc-unknown-none-elf/release/examples/basic: 1: Syntax error: "(" unexpected
+#     <<
 #[target.'cfg(feature="espflash-defmt")']
 #runner = "espflash flash --log-format defmt --monitor"
-
+#
 #[target.'cfg(feature="probe_rs-defmt")']
 #runner = ["probe-rs", "run", "--log-format={{t:dimmed} [{L:bold}]} {s}  {{c} {ff}:{l:1}%dimmed}"]
-  # did not work:
-  # <<
-  #   /home/ubuntu/target/riscv32imc-unknown-none-elf/release/examples/basic: 1: Syntax error: "(" unexpected
-  # <<
 
 [env]
 ESP_LOG="info"    # *should* affect the 'espflash-log' feature (didn't..)

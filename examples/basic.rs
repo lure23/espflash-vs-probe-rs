@@ -7,16 +7,12 @@ use critical_section::Mutex;
 use esp_backtrace as _;
 use esp_hal::{
     delay::Delay,
-    gpio::{Output, Level, /*OutputConfig*/},
+    gpio::{AnyPin, Output, Level, /*OutputConfig*/},
     i2c::master::I2c,
-    //main
+    main
 };
 #[cfg(feature = "esp-hal-next")]
 use esp_hal::{gpio::OutputConfig, time::Rate};
-#[cfg(not(feature = "esp-hal-0_22"))]
-use esp_hal::main;
-#[cfg(feature = "esp-hal-0_22")]
-use esp_hal::{entry as main};
 
 #[cfg(feature = "espflash-defmt")]
 use esp_println as _;
@@ -46,10 +42,8 @@ fn main() -> ! {
                 #[cfg(feature="esp-hal-next")]
                 let x = x.with_frequency( Rate::from_khz(1000) );     // Note: ESP32-C{36} only run up to 400 kHz (right?)
                 x
-            });
-
-        #[cfg(not(feature = "esp-hal-0_22"))]
-        let xx = xx.unwrap();
+            })
+            .unwrap();
 
         if ESP32_C3 {
             xx.with_sda(peripherals.GPIO4)
@@ -62,8 +56,11 @@ fn main() -> ! {
 
     // SATEL board: reset by bringing 'PWR_EN' momentarily down
     {
-        use esp_hal::gpio::AnyPin;
-        let pin: AnyPin = if ESP32_C3 { peripherals.GPIO6.into() } else { peripherals.GPIO21.into() };
+        let pin: AnyPin = if ESP32_C3 {
+            peripherals.GPIO6.into()
+        } else {
+            peripherals.GPIO21.into()
+        };
 
         #[allow(non_snake_case)]
         #[cfg(feature="esp-hal-next")]
@@ -107,7 +104,7 @@ fn main() -> ! {
         info!("alive = {} {}", status, alive);
 
         let status = vl53l5::vl53l5cx_start_ranging(&mut p_dev as *mut _);
-        info!("start ranging {}", status);
+        info!("start ranging {}\n", status);
 
         let mut _loop = 0;
         let mut isReady = 0u8;
@@ -152,13 +149,13 @@ fn main() -> ! {
                 info!("Print data no : {}", p_dev.streamcount);
                 for i in 0..16 {
                     info!(
-                        "Zone : {}, Status : {}, Distance : {} mm\n",
+                        "Zone : {}, Status : {}, Distance : {} mm{}",
                         i,
                         Results.target_status[VL53L5CX_NB_TARGET_PER_ZONE * i],
-                        Results.distance_mm[VL53L5CX_NB_TARGET_PER_ZONE * i]
+                        Results.distance_mm[VL53L5CX_NB_TARGET_PER_ZONE * i],
+                        if i==15 { "\n" } else { "" }
                     );
                 }
-                info!("\n");
                 // _loop += 1;
             }
 
@@ -184,24 +181,7 @@ extern "C" fn RdByte(
     register_adress: u16,
     p_value: *mut u8,
 ) -> u8 {
-    critical_section::with(|cs| {
-        let reg = register_adress.to_be_bytes();
-
-        let mut i2c = I2C.borrow_ref_mut(cs);
-        let i2c = i2c.as_mut().unwrap();
-
-        let mut buffer = [0u8; 1];
-        i2c.write(ADDRESS, &[reg[0], reg[1]]).unwrap();
-        i2c.read(ADDRESS, &mut buffer).unwrap();
-
-        blocking_delay_ms(1);
-        //WaitMs(p_platform, 1);
-
-        unsafe {
-            *p_value = buffer[0];
-        }
-        0
-    })
+    RdMulti(_p_platform, register_adress, p_value, 1)
 }
 
 #[no_mangle]
@@ -210,21 +190,7 @@ extern "C" fn WrByte(
     register_adress: u16,
     value: u8,
 ) -> u8 {
-    critical_section::with(|cs| {
-        let reg = register_adress.to_be_bytes();
-
-        let mut i2c = I2C.borrow_ref_mut(cs);
-        let i2c = i2c.as_mut().unwrap();
-
-        let buffer = [reg[0], reg[1], value];
-
-        i2c.write(ADDRESS, &buffer).unwrap();
-        //WaitMs(p_platform, 1);
-        blocking_delay_ms(1);
-
-        //     log::info!("wrote reg {} -> {}", RegisterAdress, value);
-        0
-    })
+    WrMulti(_p_platform, register_adress, [value] .as_mut_ptr(), 1)
 }
 
 #[no_mangle]
@@ -302,16 +268,6 @@ pub extern "C" fn SwapBuffer(buf: *mut u8, size: u16 /*size in bytes; not words*
 
 #[no_mangle]
 extern "C" fn WaitMs(_p_platform: *mut vl53l5::VL53L5CX_Platform, time_ms: u32) -> u8 {
-
-    /***
-    critical_section::with(|cs| {
-        DELAY
-            .borrow_ref_mut(cs)
-            .as_mut()
-            .unwrap()
-            .delay_millis(time_ms);
-    });
-    ***/
     blocking_delay_ms(time_ms);
     0
 }

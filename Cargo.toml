@@ -14,7 +14,7 @@ esp-println = { version = "0.13.0", features = ["esp32c3"], optional = true }   
 log = { version = "0.4.25", optional = true }
 
 [dev-dependencies]
-esp-hal = { version = "0.23.1", features = ["esp32c3"] }
+esp-hal = { version = "0.23.1", features = ["esp32c3"] }  # "defmt"
 esp-backtrace = { version = "0.15.0", features = [
     "esp32c3",
     "exception-handler",
@@ -24,21 +24,20 @@ cfg-if = "1.0.0"
 critical-section = "1.2.0"
 
 [features]
-_defmt = ["dep:defmt", "esp-hal/defmt", "esp-backtrace/defmt"]
+_defmt = ["dep:defmt", "esp-hal/defmt"]
 _log = ["dep:log", "esp-println/log"]
 
 espflash-println = ["dep:esp-println", "esp-backtrace/println"]
 espflash-log = ["_log", "dep:esp-println", "esp-backtrace/println"]
 
 # Enables '{info|debug|warn|...}' macros, in addition to 'println!'. Run via 'espflash'
-espflash-defmt = ["_defmt", "dep:esp-println", "esp-println/defmt-espflash", "esp-println/log"]
-probe_rs-defmt = ["_defmt", "dep:defmt-rtt"]
+espflash-defmt = ["_defmt", "dep:esp-println", "esp-backtrace/defmt", "esp-println/defmt-espflash"]
+probe_rs-defmt = ["_defmt", "dep:defmt-rtt", "esp-backtrace/defmt"]
 
 #default = []
 default = ["espflash-println"]
 
 esp-hal-next = []   # enable to use latest 'main' (also enable the 'patch.crates-io' section, below)
-esp-hal-0_22 = []
 
 [profile.release]
 debug = 2
