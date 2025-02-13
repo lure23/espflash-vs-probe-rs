@@ -77,7 +77,6 @@ fn main() -> ! {
 
     critical_section::with(|cs| {
         I2C.borrow_ref_mut(cs).replace(i2c);
-        //DELAY.borrow_ref_mut(cs).replace(delay);
     });
 
     unsafe {

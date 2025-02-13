@@ -14,14 +14,14 @@ esp-println = { version = "0.13.0", features = ["esp32c3"], optional = true }   
 log = { version = "0.4.25", optional = true }
 
 [dev-dependencies]
-esp-hal = { version = "0.23.1", features = ["esp32c3"] }  # "defmt"
+cfg-if = "1.0.0"
+critical-section = "1.2.0"
 esp-backtrace = { version = "0.15.0", features = [
     "esp32c3",
     "exception-handler",
     "panic-handler",
 ] } # "println"|"defmt"
-cfg-if = "1.0.0"
-critical-section = "1.2.0"
+esp-hal = { version = "0.23.1", features = ["esp32c3"] }  # "defmt"
 
 [features]
 _defmt = ["dep:defmt", "esp-hal/defmt"]
