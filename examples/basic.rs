@@ -11,8 +11,11 @@ use esp_hal::{
     i2c::master::I2c,
     main
 };
-#[cfg(feature = "esp-hal-next")]
-use esp_hal::{gpio::OutputConfig, time::Rate};
+#[cfg(any(feature = "esp-hal-next", feature="esp-hal-beta0"))]
+use esp_hal::{
+    gpio::OutputConfig,
+    time::Rate
+};
 
 #[cfg(feature = "espflash-defmt")]
 use esp_println as _;
@@ -25,6 +28,8 @@ pub(crate) mod fmt;
 static I2C: Mutex<RefCell<Option<I2c<esp_hal::Blocking>>>> = Mutex::new(RefCell::new(None));
 
 const ESP32_C3: bool = ! cfg!(target_has_atomic = "8");
+
+use espflash_vs as vl53l5;
 
 #[main]
 fn main() -> ! {
@@ -39,8 +44,8 @@ fn main() -> ! {
         let xx = esp_hal::i2c::master::I2c::new(
             peripherals.I2C0, {
                 let x = esp_hal::i2c::master::Config::default();
-                #[cfg(feature="esp-hal-next")]
-                let x = x.with_frequency( Rate::from_khz(1000) );     // Note: ESP32-C{36} only run up to 400 kHz (right?)
+                #[cfg(any(feature="esp-hal-next", feature="esp-hal-beta0"))]
+                let x = x.with_frequency( Rate::from_khz(1000) );     // Note: ESP32-C{36} only run up to 400 kHz
                 x
             })
             .unwrap();
@@ -63,11 +68,11 @@ fn main() -> ! {
         };
 
         #[allow(non_snake_case)]
-        #[cfg(feature="esp-hal-next")]
+        #[cfg(any(feature="esp-hal-next", feature="esp-hal-beta0"))]
         let mut PWR_EN = Output::new(pin, Level::Low, OutputConfig::default());
         #[allow(non_snake_case)]
-        #[cfg(not(feature="esp-hal-next"))]
-        let mut PWR_EN = Output::new(pin, Level::Low);
+        #[cfg(not(any(feature="esp-hal-next", feature="esp-hal-beta0")))]
+        let mut PWR_EN = Output::new(pin, Level::Low);      // 0.23.{0..1}
 
         PWR_EN.set_low();
         blocking_delay_ms(10);      // 10ms based on UM2884 (PDF; 18pp) Rev. 6, Chapter 4.2
@@ -272,6 +277,12 @@ extern "C" fn WaitMs(_p_platform: *mut vl53l5::VL53L5CX_Platform, time_ms: u32) 
 }
 
 // There should not be a reason to keep 'DELAY' a mutex-protected shared, is there?
+//
+// tbd. perhaps there is?  That would explain why things don't work on ESP32-C6 (that has 'a',
+//      unlike ESP32-C3.
+//
+//
+//
 const D_PROVIDER: Delay = Delay::new();
 
 fn blocking_delay_ms(ms: u32) {
@@ -280,18 +291,16 @@ fn blocking_delay_ms(ms: u32) {
 
 #[cfg(feature = "_defmt")]
 fn init_defmt() {
-    #[cfg(feature="esp-hal-next")]
-    use esp_hal::time::Instant;
-    #[cfg(not(feature="esp-hal-next"))]
-    use esp_hal::time::now;
-
     defmt::timestamp!("{=u64:us}", {
-        #[cfg(feature="esp-hal-next")]
+        #[cfg(any(feature="esp-hal-next", feature="esp-hal-beta0"))]
         {
-            let now = Instant::now();
-            now.duration_since_epoch().as_micros()
+            use esp_hal::time::Instant;
+            Instant::now().duration_since_epoch().as_micros()
         }
-        #[cfg(not(feature="esp-hal-next"))]
-        now().duration_since_epoch().to_micros()
+        #[cfg(not(any(feature="esp-hal-next", feature="esp-hal-beta0")))]
+        {
+            use esp_hal::time::now;
+            now().duration_since_epoch().to_micros()
+        }
     });
 }

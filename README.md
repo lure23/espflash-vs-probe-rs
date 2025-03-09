@@ -67,12 +67,12 @@ For getting the results below, the setup was:
 |5V|3. 5V|
 |GPIO6 <sub>(GPIO21)</sub>|4. PWR_EN|Alternatively, via ~47kΩ to +3v3|
 |--|5. --|*pulled up by Satel*|
-|GPIO4 <sub>(GPIO18)</sub>|6. SCL|
-|GPIO5 <sub>(GPIO19)</sub>|7. SDA|
+|GPIO5 <sub>(GPIO19)</sub>|6. SCL|
+|GPIO4 <sub>(GPIO18)</sub>|7. SDA|
 |--|8. --||
 |--|9. --||
 
->`|**|`: ESP32-C6 pins are denoted in parantheses.
+>`|**|`: ESP32-C6 pins are denoted in parantheses. Note that the order of `SDA` and `SCL` is different than in the code...
 
 
 ## Run
@@ -90,7 +90,7 @@ $ sh/set-c6.sh
 - [x] run
 
    ```
-   $ cargo run --release --features=esp-hal-next --example basic
+   $ cargo run --release --features esp-hal-beta0 --example basic
    ```
 
 Sample output:
@@ -126,7 +126,7 @@ Zone : 5, Status : 4, Distance : 1762 mm
 - [x] run
 
    ```
-   $ cargo run --release --no-default-features --features=esp-hal-next,espflash-log --example basic
+   $ cargo run --release --no-default-features --features=esp-hal-beta0,espflash-log --example basic
    ```
 
 Sample output:
@@ -169,19 +169,20 @@ INFO - Zone : 6, Status : 5, Distance : 1780 mm
 >```
 <!-- empty lines left on purpose -->
 
+
 ### `espflash-defmt`
 
 - [x] connect the devkit to either USB/UART or USB/JTAG port
 - [x] build
 
    ```
-   $ cargo build --release --no-default-features --features=esp-hal-next,espflash-defmt --example basic
+   $ cargo build --release --no-default-features --features=esp-hal-beta0,espflash-defmt --example basic
    ```
 
 - [x] run
 
 	```
-	$ espflash flash --log-format defmt --monitor {path-to}/target/riscv32imc-unknown-none-elf/release/examples/basic
+	$ espflash flash --log-format defmt --monitor $(sh/target-dir.sh)/riscv32imc-unknown-none-elf/release/examples/basic
 	```
 
 Output:
@@ -234,16 +235,14 @@ We get time stamps, log levels (colored only on the <font color=green>`INFO`</fo
 - [x] build
 
    ```
-   $ cargo build --release --no-default-features --features=esp-hal-next,probe_rs-defmt --example basic
+   $ cargo build --release --no-default-features --features=esp-hal-beta0,probe_rs-defmt --example basic
    ```
 
 - [x] run
 
    ```
-   $ probe-rs run "--log-format={{t:dimmed} [{L:bold}]} {s}  {{c} {ff}:{l:1}%dimmed}" {path-to}/target/riscv32imc-unknown-none-elf/release/examples/basic
+   $ probe-rs run "--log-format={{t:dimmed} [{L:bold}]} {s}  {{c} {ff}:{l:1}%dimmed}" $(sh/target-dir.sh)/riscv32imc-unknown-none-elf/release/examples/basic
 	```
-
-	If you're using a common `target` folder (e.g. with `mp` virtualization approach), the path is `~/target`. Otherwise, just `./target`.
 
 Running fails with:
 
@@ -259,7 +258,7 @@ Finished in 5.05s
 
 >Note: `probe-rs` provides nicer coloring than `espflash`, and the log format can be fine tuned.
 
-Unfortunately, `probe-rs` (0.26.0) does not work with `esp-hal` I2C access (long story, documented elsewhere; RTT stopping the MCU core disturbs I2C traffic).
+Unfortunately, `probe-rs` (0.26.0) does not work with `esp-hal` I2C access (long story, documented [elsewhere](https://github.com/probe-rs/probe-rs/issues/2818#issuecomment-2358791448)).
 
 >On ESP32-C6:
 >
@@ -281,7 +280,7 @@ At the moment, the VL53L5CX device is usable only with a narrow combination of d
 |devkit|`esp-hal`|`espflash-println`|`espflash-log`|`espflash-defmt`|`probe_rs-defmt`|
 |---|---|---|---|---|---|
 |**<nobr>ESP32-C3-DevkitC-02</nobr>**|
-||`main` (latest; moving target)|✅|✅|✅|❌|
+||`main` (latest; moving target)|✅|✅|✅ + nice logging|❌|
 |**ESP32-C6-Devkit-M1**|
 ||`main` (latest; moving target)|❌ scanning does not start; error 255|❌ panic: `ArbitrationLost `|❌ panics at `_vl53l5cx_poll_for_answer`|❌ panic|
 ||`0.23.1`|❌ *as above*|||❌ Does not start; no output|
@@ -304,7 +303,21 @@ probe-rs 0.26.0 (git commit: 4fd36e2)
 - [ ] Repeat the ESP32-C6 results with another devkit / breadboard.
 -->
 
-
+<!--
 ### Footnotes
 
 - `bjoernQ` reports things [work for him](https://github.com/bjoernQ/vl53l5-c2rust/issues/1#issuecomment-2635855632) on ESP32-C6
+-->
+
+## Footnotes...
+
+Getting "no error" (`0`) from the `init` DOES NOT seem to mean things went well.
+
+```
+alive = 0 1
+init 0
+alive = 0 1
+```
+
+- When successful, getting to `init 0` takes some time
+- When things fail, it's pretty instantaneous
