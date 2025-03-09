@@ -7,7 +7,7 @@ use critical_section::Mutex;
 use esp_backtrace as _;
 use esp_hal::{
     delay::Delay,
-    gpio::{AnyPin, Output, Level, /*OutputConfig*/},
+    gpio::{AnyPin, Output, Level},
     i2c::master::I2c,
     main
 };
@@ -45,7 +45,11 @@ fn main() -> ! {
             peripherals.I2C0, {
                 let x = esp_hal::i2c::master::Config::default();
                 #[cfg(any(feature="esp-hal-next", feature="esp-hal-beta0"))]
-                let x = x.with_frequency( Rate::from_khz(1000) );     // Note: ESP32-C{36} only run up to 400 kHz
+                let x = x.with_frequency( Rate::from_khz(400) );
+                    // Note: ESP32-C{36} only run up to 400 kHz
+                    //  C3: is okay with '1000'
+                    //  C6: works with: '200', '500', even '800'; starts failing on '1000' (panic with 'AcknowledgeCheckFailed(Data)' and 'ArbitrationLost')
+                    //      - sometimes 'AcknowledgeCheckFailed(Data)' also with '800'
                 x
             })
             .unwrap();
@@ -276,13 +280,6 @@ extern "C" fn WaitMs(_p_platform: *mut vl53l5::VL53L5CX_Platform, time_ms: u32) 
     0
 }
 
-// There should not be a reason to keep 'DELAY' a mutex-protected shared, is there?
-//
-// tbd. perhaps there is?  That would explain why things don't work on ESP32-C6 (that has 'a',
-//      unlike ESP32-C3.
-//
-//
-//
 const D_PROVIDER: Delay = Delay::new();
 
 fn blocking_delay_ms(ms: u32) {

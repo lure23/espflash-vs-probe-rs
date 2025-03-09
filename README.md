@@ -87,7 +87,7 @@ $ sh/set-c6.sh
 ### `espflash-println`: `esp-println` and `println!`
 
 - [x] connect the devkit to either USB/UART or USB/JTAG port
-- [x] run
+- [x] run
 
    ```
    $ cargo run --release --features esp-hal-beta0 --example basic
@@ -109,16 +109,41 @@ Zone : 5, Status : 4, Distance : 1762 mm
 
 >On ESP32-C6:
 >
+>With I2C speed `1000` (over the limit, but works on C3):
+>
 >```
->[...]
 >SATEL board powered off and on again.
 >alive = 0 1
 >init 0
 >alive = 0 1
->start ranging 255
+>
+>
+>====================== PANIC ======================
+>panicked at examples/basic.rs:245:14:
+>called `Result::unwrap()` on an `Err` value: AcknowledgeCheckFailed(Data)
+>
 >```
 >
->This means the scanning did not start. `255` is a generic error code (tbd. **look closer to it**)
+>With I2C speed lowered to `200` (or `500`):
+>
+>```
+>SATEL board powered off and on again.
+>alive = 0 1
+>init 0
+>alive = 0 1
+>start ranging 0
+>
+>Print data no : 0
+>Zone : 0, Status : 6, Distance : 1737 mm
+>Zone : 1, Status : 6, Distance : 1772 mm
+>Zone : 2, Status : 6, Distance : 1791 mm
+>Zone : 3, Status : 6, Distance : 743 mm
+>Zone : 4, Status : 6, Distance : 1739 mm
+>Zone : 5, Status : 6, Distance : 1782 mm
+>[...]
+>```
+> i.e. things work ☀️🙌
+
 
 ### `espflash-log`: `esp-println` and `{debug|info|warn|...}!`
 
@@ -152,22 +177,7 @@ INFO - Zone : 6, Status : 5, Distance : 1780 mm
 
 <p />
 
->On ESP32-C6:
->
->```
->INFO - SATEL board powered off and on again.
->INFO - alive = 0 1
->INFO - init 0
->INFO - alive = 0 1
->
->
->====================== PANIC ======================
->panicked at examples/basic.rs:209:46:
->called `Result::unwrap()` on an `Err` value: ArbitrationLost
->
->
->```
-<!-- empty lines left on purpose -->
+On ESP32-C6, works the same.
 
 
 ### `espflash-defmt`
@@ -182,7 +192,7 @@ INFO - Zone : 6, Status : 5, Distance : 1780 mm
 - [x] run
 
 	```
-	$ espflash flash --log-format defmt --monitor $(sh/target-dir.sh)/riscv32imc-unknown-none-elf/release/examples/basic
+	$ espflash flash --log-format defmt --monitor $(cat .OUT_DIR)/examples/basic
 	```
 
 Output:
@@ -202,32 +212,8 @@ Output:
 
 We get time stamps, log levels (colored only on the <font color=green>`INFO`</font>, not the whole lines).
 
->On ESP32-C6:
->
->```
->[...]
->0.169209 INFO SATEL board powered off and on again.
->0.173741 INFO alive = 0 1
->1.400483 INFO init 0
->1.404769 INFO alive = 0 1
->1.460476 ERROR ====================== PANIC ======================
->1.461334 ERROR panicked at examples/basic.rs:209:46
->1.461492 ERROR Backtrace:
->1.461596 ERROR 0x42000372
->0x42000372 - core::result::Result<T,E>::unwrap
->    at /rustc/e71f9a9a98b0faf423844bf0ba7438f29dc27d58/library/core/src/result.rs:1104
->1.461725 ERROR 0x42003f56
->0x42003f56 - vl53l5::_vl53l5cx_poll_for_answer
->    at /home/ubuntu/espflash-vs-probe_rs/src/lib.rs:123
->1.461852 ERROR 0x4200097a
->0x4200097a - main
->    at /home/ubuntu/espflash-vs-probe_rs/examples/basic.rs:105
->1.461977 ERROR 0x420068a0
->0x420068a0 - hal_main
->    at /home/ubuntu/.cargo/git/checkouts/esp-hal-42ec44e8c6943228/392d5cc/esp-hal/src/lib.rs:422
->```
->
->i.e. panics at `_vl53l5cx_poll_for_answer()`
+On ESP32-C6, the behaviour is the same.
+
 
 ### `probe_rs-defmt`
 
@@ -241,10 +227,10 @@ We get time stamps, log levels (colored only on the <font color=green>`INFO`</fo
 - [x] run
 
    ```
-   $ probe-rs run "--log-format={{t:dimmed} [{L:bold}]} {s}  {{c} {ff}:{l:1}%dimmed}" $(sh/target-dir.sh)/riscv32imc-unknown-none-elf/release/examples/basic
+   $ probe-rs run "--log-format={{t:dimmed} [{L:bold}]} {s}  {{c} {ff}:{l:1}%dimmed}" $(cat .OUT_DIR)/examples/basic
 	```
 
-Running fails with:
+Running on ESP32-C3 fails with:
 
 ```
 Finished in 5.05s
@@ -258,18 +244,19 @@ Finished in 5.05s
 
 >Note: `probe-rs` provides nicer coloring than `espflash`, and the log format can be fine tuned.
 
+
 Unfortunately, `probe-rs` (0.26.0) does not work with `esp-hal` I2C access (long story, documented [elsewhere](https://github.com/probe-rs/probe-rs/issues/2818#issuecomment-2358791448)).
 
->On ESP32-C6:
->
->```
->0.202341 [INFO ] SATEL board powered off and on again.  basic examples/fmt.rs:150
->0.206864 [INFO ] alive = 0 1  basic examples/fmt.rs:150
->1.433658 [INFO ] init 0  basic examples/fmt.rs:150
->1.437950 [INFO ] alive = 0 1  basic examples/fmt.rs:150
->1.493739 [ERROR] ====================== PANIC ======================  esp_backtrace src/lib.rs:25
->1.493758 [ERROR] panicked at examples/basic.rs:209:46  esp_backtrace src/lib.rs:25
->```
+On ESP32-C6, we don't suffer from the RTT problem:
+
+```
+15.418156 [INFO ] Print data no : 11  basic examples/fmt.rs:150
+15.418179 [INFO ] Zone : 0, Status : 5, Distance : 1744 mm  basic examples/fmt.rs:150
+15.418224 [INFO ] Zone : 1, Status : 5, Distance : 1770 mm  basic examples/fmt.rs:150
+15.418270 [INFO ] Zone : 2, Status : 5, Distance : 1790 mm  basic examples/fmt.rs:150
+15.418315 [INFO ] Zone : 3, Status : 4, Distance : 980 mm  basic examples/fmt.rs:150
+15.418361 [INFO ] Zone : 4, Status : 5, Distance : 1745 mm  basic examples/fmt.rs:150
+```
 
 
 ## Summary
@@ -280,11 +267,9 @@ At the moment, the VL53L5CX device is usable only with a narrow combination of d
 |devkit|`esp-hal`|`espflash-println`|`espflash-log`|`espflash-defmt`|`probe_rs-defmt`|
 |---|---|---|---|---|---|
 |**<nobr>ESP32-C3-DevkitC-02</nobr>**|
-||`main` (latest; moving target)|✅|✅|✅ + nice logging|❌|
+||1.0.0-beta0|✅|✅|✅ + nice logging|❌|
 |**ESP32-C6-Devkit-M1**|
-||`main` (latest; moving target)|❌ scanning does not start; error 255|❌ panic: `ArbitrationLost `|❌ panics at `_vl53l5cx_poll_for_answer`|❌ panic|
-||`0.23.1`|❌ *as above*|||❌ Does not start; no output|
-||`0.23.0`|❌ *as above*|||❌ Does not start; no output|
+||1.0.0-beta0|✅ but I2C speed must be set up to be meaningful (up to 400 kHz; not 1000)|✅ |✅ |✅|
 
 <!-- Using:
 
@@ -296,28 +281,3 @@ $ probe-rs --version
 probe-rs 0.26.0 (git commit: 4fd36e2)
 ```
 -->
-
-<!-- hidden
-### Next steps
-
-- [ ] Repeat the ESP32-C6 results with another devkit / breadboard.
--->
-
-<!--
-### Footnotes
-
-- `bjoernQ` reports things [work for him](https://github.com/bjoernQ/vl53l5-c2rust/issues/1#issuecomment-2635855632) on ESP32-C6
--->
-
-## Footnotes...
-
-Getting "no error" (`0`) from the `init` DOES NOT seem to mean things went well.
-
-```
-alive = 0 1
-init 0
-alive = 0 1
-```
-
-- When successful, getting to `init 0` takes some time
-- When things fail, it's pretty instantaneous
