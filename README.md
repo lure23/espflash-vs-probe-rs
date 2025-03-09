@@ -1,13 +1,12 @@
 # espflash vs. probe-rs
 
-There are implication to selecting the logging strategy for embedded ESP32 Rust projects. The strategies are not clearly defined, or documented. It's kind of like a Wild West.
+There are implications to selecting the logging strategy for embedded ESP32 Rust projects. The strategies are not clearly defined, or documented. It's kind of like a Wild West.
 
-Belowm the author places them in four categories.
+Below the author places them in four categories.
 
 The repo examines the compatibility of each of the strategies with the ST.com [VL53L5CX](https://www.st.com/en/imaging-and-photonics-solutions/vl53l5cx.html) time-of-flight sensor.
 
->Why VL53L5CX??? Because the sensor('s use of I2C bus) has some compatibility issues with `probe-rs`, which lead the author down this 🐰🕳️
- to begin with.
+>Why VL53L5CX??? Because the sensor('s use of I2C bus) has some compatibility issues with `probe-rs`, which lead the author down this 🐰🕳️ to begin with.
  
 ## Four logging strategies
 
@@ -30,35 +29,65 @@ Uses `{debug|info|warn|...}!` macros; run using `probe-rs`; depends on: [`defmt`
 
 ## Requirements
 
-- ESP32-C3 devkit
+- ESP32-C3 or ESP32-C6 devkit
 - SATEL evaluation board
 - patience!
 
+For getting the results below, the setup was:
+
+- Raspberry Pi acting as host
+
+	```
+	$ espflash --version
+	espflash 3.3.0
+	```
+
+	```
+	$ probe-rs --version
+	probe-rs 0.26.0 (git commit: 4fd36e2)
+	```
+
+	```
+	$ uname -a
+	Linux rpi 6.1.21-v7+ #1642 SMP Mon Apr  3 17:20:52 BST 2023 armv7l GNU/Linux
+	```
+
+	```
+	$ lsb_release -a
+	[...]
+	Description:   Raspbian GNU/Linux 11 (bullseye)
+	```
+
 ## Wiring
 
-|ESP32-C3 pins|Satel|other/comments|
+|ESP32-C3 pins<sup>`**`</sup>|Satel|other/comments|
 |---|---|---|
 |GND|1. GND|
 |3v3|2. 3v3|
 |5V|3. 5V|
-|GPIO6|4. PWR_EN|Alternatively, via ~47kΩ to +3v3|
+|GPIO6 <sub>(GPIO21)</sub>|4. PWR_EN|Alternatively, via ~47kΩ to +3v3|
 |--|5. --|*pulled up by Satel*|
-|GPIO4|6. SCL|
-|GPIO5|7. SDA|
+|GPIO4 <sub>(GPIO18)</sub>|6. SCL|
+|GPIO5 <sub>(GPIO19)</sub>|7. SDA|
 |--|8. --||
 |--|9. --||
 
->For ESP32-C6 pins, see the source.
+>`|**|`: ESP32-C6 pins are denoted in parantheses.
 
 
 ## Run
 
-Contents of the `main` branch are set up for targetting ESP32-C3.
+The code is set up for targetting ESP32-C3. If you are using ESP32-C6, run this first:
+
+```
+$ sh/set-c6.sh
+```
+
 
 ### `espflash-println`: `esp-println` and `println!`
 
-- [ ] connect the devkit to either USB/UART or USB/JTAG port
-- [ ] run
+- [x] connect the devkit to either USB/UART or USB/JTAG port
+- [x] run
 
    ```
    $ cargo run --release --features=esp-hal-next --example basic
@@ -78,10 +107,23 @@ Zone : 5, Status : 4, Distance : 1762 mm
 [...]
 ```
 
+>On ESP32-C6:
+>
+>```
+>[...]
+>SATEL board powered off and on again.
+>alive = 0 1
+>init 0
+>alive = 0 1
+>start ranging 255
+>```
+>
+>This means the scanning did not start. `255` is a generic error code (tbd. **look closer to it**)
+
 ### `espflash-log`: `esp-println` and `{debug|info|warn|...}!`
 
-- [ ] connect the devkit to either USB/UART or USB/JTAG port
-- [ ] run
+- [x] connect the devkit to either USB/UART or USB/JTAG port
+- [x] run
 
    ```
    $ cargo run --release --no-default-features --features=esp-hal-next,espflash-log --example basic
@@ -102,26 +144,44 @@ INFO - Zone : 6, Status : 5, Distance : 1780 mm
 [...]
 ```
 
->Note: Coloring is by the line, e.g. all `INFO` lines are <font color=green>green</font>.
+>Note: Coloring is by the line, e.g. <font color=green>all `INFO` lines are green</font>.
 
 <p />
 
 >Note: The `ESP_LOG` env.var. in `.cargo/config.toml` *should* now be usable for setting the logging level (but this didn't work for the author). tbd.
 
+<p />
+
+>On ESP32-C6:
+>
+>```
+>INFO - SATEL board powered off and on again.
+>INFO - alive = 0 1
+>INFO - init 0
+>INFO - alive = 0 1
+>
+>
+>====================== PANIC ======================
+>panicked at examples/basic.rs:209:46:
+>called `Result::unwrap()` on an `Err` value: ArbitrationLost
+>
+>
+>```
+<!-- empty lines left on purpose -->
 
 ### `espflash-defmt`
 
-- [ ] connect the devkit to either USB/UART or USB/JTAG port
-- [ ] build
+- [x] connect the devkit to either USB/UART or USB/JTAG port
+- [x] build
 
    ```
    $ cargo build --release --no-default-features --features=esp-hal-next,espflash-defmt --example basic
    ```
 
-- [ ] run
+- [x] run
 
 	```
-	$ espflash flash --log-format defmt --monitor target/riscv32imc-unknown-none-elf/release/examples/basic
+	$ espflash flash --log-format defmt --monitor {path-to}/target/riscv32imc-unknown-none-elf/release/examples/basic
 	```
 
 Output:
@@ -139,26 +199,51 @@ Output:
 [...]
 ```
 
-We get time stamps, log levels (colored only on the `INFO`, not the whole lines).
+We get time stamps, log levels (colored only on the <font color=green>`INFO`</font>, not the whole lines).
 
-<!-- yes, it was... hilarious 🤦
->tbd. Why are there extra linefeeds???  Can we get rid of that?
--->
+>On ESP32-C6:
+>
+>```
+>[...]
+>0.169209 INFO SATEL board powered off and on again.
+>0.173741 INFO alive = 0 1
+>1.400483 INFO init 0
+>1.404769 INFO alive = 0 1
+>1.460476 ERROR ====================== PANIC ======================
+>1.461334 ERROR panicked at examples/basic.rs:209:46
+>1.461492 ERROR Backtrace:
+>1.461596 ERROR 0x42000372
+>0x42000372 - core::result::Result<T,E>::unwrap
+>    at /rustc/e71f9a9a98b0faf423844bf0ba7438f29dc27d58/library/core/src/result.rs:1104
+>1.461725 ERROR 0x42003f56
+>0x42003f56 - vl53l5::_vl53l5cx_poll_for_answer
+>    at /home/ubuntu/espflash-vs-probe_rs/src/lib.rs:123
+>1.461852 ERROR 0x4200097a
+>0x4200097a - main
+>    at /home/ubuntu/espflash-vs-probe_rs/examples/basic.rs:105
+>1.461977 ERROR 0x420068a0
+>0x420068a0 - hal_main
+>    at /home/ubuntu/.cargo/git/checkouts/esp-hal-42ec44e8c6943228/392d5cc/esp-hal/src/lib.rs:422
+>```
+>
+>i.e. panics at `_vl53l5cx_poll_for_answer()`
 
 ### `probe_rs-defmt`
 
-- [ ] connect the devkit to the USB/JTAG port
-- [ ] build
+- [x] connect the devkit to the USB/JTAG port
+- [x] build
 
    ```
    $ cargo build --release --no-default-features --features=esp-hal-next,probe_rs-defmt --example basic
    ```
 
-- [ ] run
+- [x] run
 
    ```
-   $ probe-rs run "--log-format={{t:dimmed} [{L:bold}]} {s}  {{c} {ff}:{l:1}%dimmed}" target/riscv32imc-unknown-none-elf/release/examples/basic
+   $ probe-rs run "--log-format={{t:dimmed} [{L:bold}]} {s}  {{c} {ff}:{l:1}%dimmed}" {path-to}/target/riscv32imc-unknown-none-elf/release/examples/basic
 	```
+
+	If you're using a common `target` folder (e.g. with `mp` virtualization approach), the path is `~/target`. Otherwise, just `./target`.
 
 Running fails with:
 
@@ -176,29 +261,21 @@ Finished in 5.05s
 
 Unfortunately, `probe-rs` (0.26.0) does not work with `esp-hal` I2C access (long story, documented elsewhere; RTT stopping the MCU core disturbs I2C traffic).
 
+>On ESP32-C6:
+>
+>```
+>0.202341 [INFO ] SATEL board powered off and on again.  basic examples/fmt.rs:150
+>0.206864 [INFO ] alive = 0 1  basic examples/fmt.rs:150
+>1.433658 [INFO ] init 0  basic examples/fmt.rs:150
+>1.437950 [INFO ] alive = 0 1  basic examples/fmt.rs:150
+>1.493739 [ERROR] ====================== PANIC ======================  esp_backtrace src/lib.rs:25
+>1.493758 [ERROR] panicked at examples/basic.rs:209:46  esp_backtrace src/lib.rs:25
+>```
 
-
-## Same with ESP32-C6...?
-
-If you wish to try on another MCU:
-
-```
-$ cat .cargo/config.toml | sed -E 's/riscv32im[a]?c/riscv32imac/g' > .tmp
-$ mv .tmp .cargo/config.toml
-```
-
-```
-$ cat Cargo.toml | sed -E 's/"esp32c[[:digit:]]"/"esp32c6"/g' > .tmp
-$ mv .tmp Cargo.toml
-```
-
-<!-- Editor's note:
-The 'sed' in-place-editing syntax that *could* work on both macOS and Linux is so brittle, it's not worth exposing.
--->
 
 ## Summary
 
-At the moment, the VL53L5 device is usable only with a narrow combination of devkits, logging choices, and MCUs:
+At the moment, the VL53L5CX device is usable only with a narrow combination of devkits, logging choices, and MCUs:
 
 
 |devkit|`esp-hal`|`espflash-println`|`espflash-log`|`espflash-defmt`|`probe_rs-defmt`|
@@ -206,23 +283,28 @@ At the moment, the VL53L5 device is usable only with a narrow combination of dev
 |**<nobr>ESP32-C3-DevkitC-02</nobr>**|
 ||`main` (latest; moving target)|✅|✅|✅|❌|
 |**ESP32-C6-Devkit-M1**|
-||`main` (latest; moving target)|❌ scanning does not start; error 255|||❌|
+||`main` (latest; moving target)|❌ scanning does not start; error 255|❌ panic: `ArbitrationLost `|❌ panics at `_vl53l5cx_poll_for_answer`|❌ panic|
 ||`0.23.1`|❌ *as above*|||❌ Does not start; no output|
 ||`0.23.0`|❌ *as above*|||❌ Does not start; no output|
 
 <!-- Using:
 
+```
 $ espflash --version
 espflash 3.3.0
 
 $ probe-rs --version
 probe-rs 0.26.0 (git commit: 4fd36e2)
+```
 -->
 
+<!-- hidden
 ### Next steps
 
 - [ ] Repeat the ESP32-C6 results with another devkit / breadboard.
-
-<!--
-	`bjoernQ` reports things [work for him](https://github.com/bjoernQ/vl53l5-c2rust/issues/1#issuecomment-2635855632)
 -->
+
+
+### Footnotes
+
+- `bjoernQ` reports things [work for him](https://github.com/bjoernQ/vl53l5-c2rust/issues/1#issuecomment-2635855632) on ESP32-C6
