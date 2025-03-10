@@ -4,25 +4,24 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-c2rust-bitfields = { version = "0.19.0", features = ["no_std"] }
+c2rust-bitfields = { version = "0.20.0", features = ["no_std"] }
 
 # Cargo: no optional deps for 'dev-dependencies', so placing them up here.
 defmt = { version = "0.3.10", optional = true }
 defmt-rtt = { version = "0.4.1", optional = true }
 
-esp-println = { version = "0.13.1", features = ["esp32c6"], optional = true }   # "defmt-espflash", "log"
+esp-println = { version = "0.13.1", features = ["esp32c3"], optional = true }   # "defmt-espflash", "log"
 log = { version = "0.4.26", optional = true }
 
 [dev-dependencies]
 cfg-if = "1.0.0"
 critical-section = "1.2.0"
 esp-backtrace = { version = "0.15.1", features = [
-    "esp32c6",
+    "esp32c3",
     "exception-handler",
     "panic-handler",
 ] } # "println"|"defmt"
-#esp-hal = { version = "0.23.1", features = ["esp32c6"] }  # "defmt"
-esp-hal = { version = "1.0.0-beta.0", features = ["esp32c6", "unstable"] }  # "defmt"
+esp-hal = { version = "1.0.0-beta.0", features = ["esp32c3", "unstable"] }  # "defmt"
     # '"unstable"' needed for exposing 'esp_hal::delay' (was a default feature, earlier)
 
 [build-dependencies]

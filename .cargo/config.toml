@@ -26,7 +26,7 @@ rustflags = [
   "-C", "force-frame-pointers",
 ]
 
-target = "riscv32imac-unknown-none-elf"
+target = "riscv32imc-unknown-none-elf"
 
 # Unfortunately, cannot have '[build.'cfg(...)']'
 #[build.'cfg(feature="_defmt")']

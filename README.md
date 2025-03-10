@@ -44,7 +44,7 @@ For getting the results below, the setup was:
 
 	```
 	$ probe-rs --version
-	probe-rs 0.26.0 (git commit: 4fd36e2)
+	probe-rs 0.27.0 (git commit: v0.27.0)
 	```
 
 	```
@@ -245,7 +245,7 @@ Finished in 5.05s
 >Note: `probe-rs` provides nicer coloring than `espflash`, and the log format can be fine tuned.
 
 
-Unfortunately, `probe-rs` (0.26.0) does not work with `esp-hal` I2C access (long story, documented [elsewhere](https://github.com/probe-rs/probe-rs/issues/2818#issuecomment-2358791448)).
+Unfortunately, `probe-rs` (0.26.0; 0.27.0) does not work with `esp-hal` I2C access (long story, documented [elsewhere](https://github.com/probe-rs/probe-rs/issues/2818#issuecomment-2358791448)).
 
 On ESP32-C6, we don't suffer from the RTT problem:
 
@@ -271,13 +271,3 @@ At the moment, the VL53L5CX device is usable only with a narrow combination of d
 |**ESP32-C6-Devkit-M1**|
 ||1.0.0-beta0|✅ but I2C speed must be set up to be meaningful (up to 400 kHz; not 1000)|✅ |✅ |✅|
 
-<!-- Using:
-
-```
-$ espflash --version
-espflash 3.3.0
-
-$ probe-rs --version
-probe-rs 0.26.0 (git commit: 4fd36e2)
-```
--->

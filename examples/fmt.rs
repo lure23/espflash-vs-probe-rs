@@ -1,7 +1,5 @@
 /*
 * Adopted from -> TrouBLE examples/apps/src/fmt.rs
-*
-*   - using 'esp-println' feature instead of 'log'
 */
 #![macro_use]
 #![allow(unused_macros)]
